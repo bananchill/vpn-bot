@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     DEFAULT_INBOUND_ID: int = 1
     PANEL_URL: str
     ENCRYPTION_KEY: str  # Fernet key for encrypting admin credentials
+    OWNER_ID: int  # Telegram user ID of the bot owner
 
 
 settings = Settings()  # type: ignore[call-arg]

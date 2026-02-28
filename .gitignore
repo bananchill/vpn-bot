@@ -1,2 +1,9 @@
 .claude
 Claude.md
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+alembic/versions/__pycache__/

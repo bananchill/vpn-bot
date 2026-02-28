@@ -14,6 +14,7 @@ os.environ.setdefault("PANEL_URL", "http://localhost:2053")
 os.environ.setdefault(
     "ENCRYPTION_KEY", "uD1gNjS5zNNNWL0fthTbmqp_0MO--Wpc3K-be1seUCY="
 )
+os.environ.setdefault("OWNER_ID", "999999999")
 
 
 @pytest.fixture()

@@ -42,6 +42,7 @@ cp .env.example .env
 | `PANEL_URL` | URL панели 3x-ui, например `http://212.34.139.158:2053`. |
 | `DEFAULT_INBOUND_ID` | ID inbound в 3x-ui, к которому будут привязываться клиенты. По умолчанию `1`. |
 | `ENCRYPTION_KEY` | Ключ Fernet для шифрования учетных данных администратора в базе. |
+| `OWNER_ID` | Telegram ID владельца бота. Даёт доступ к скрытым командам управления администраторами. Узнать свой ID можно через [@userinfobot](https://t.me/userinfobot). |
 
 Генерация `ENCRYPTION_KEY`:
 

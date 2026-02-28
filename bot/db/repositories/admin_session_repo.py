@@ -67,6 +67,22 @@ class AdminSessionRepository:
         await self._session.flush()
         return admin_session
 
+    async def get_first_credentials(self) -> tuple[str, str] | None:
+        """Return (panel_url, encrypted_credentials) for the first admin session.
+
+        Used by handler layer to obtain panel connection info without
+        exposing the ORM model outside the repository.
+
+        Returns:
+            Tuple of (panel_url, encrypted_credentials) or None if no session exists.
+        """
+        stmt = select(AdminSession).limit(1)
+        result = await self._session.execute(stmt)
+        admin_session = result.scalar_one_or_none()
+        if admin_session is None:
+            return None
+        return (admin_session.panel_url, admin_session.encrypted_credentials)
+
     async def delete_by_user_id(self, user_id: int) -> bool:
         """Delete admin session. Returns True if it existed."""
         admin_session = await self.get_by_user_id(user_id)

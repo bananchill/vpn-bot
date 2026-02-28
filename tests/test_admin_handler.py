@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Chat, Message, User
 
+from bot.dto import UserDTO
 from bot.handlers.admin import (
     AdminLoginStates,
     cmd_admin,
@@ -20,6 +22,8 @@ from bot.handlers.admin import (
     process_password,
 )
 from bot.services.xui_client import XUIAuthError, XUIConnectionError
+
+NOW = datetime.now(tz=UTC)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -129,9 +133,14 @@ class TestProcessPassword:
             mock_client.return_value.__aenter__ = AsyncMock(return_value=mock_xui)
             mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            # Mock repos
-            mock_user = MagicMock()
-            mock_user.id = 1
+            # Mock repos — get_or_create now returns UserDTO
+            mock_user = UserDTO(
+                id=1,
+                telegram_id=123456,
+                username="testuser",
+                is_admin=True,
+                created_at=NOW,
+            )
 
             with (
                 patch("bot.handlers.admin.UserRepository") as mock_user_repo_cls,

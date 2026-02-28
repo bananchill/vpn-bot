@@ -19,7 +19,7 @@ class AuthMiddleware(BaseMiddleware):
     """Get or create user on every message/callback and inject into handler data.
 
     Adds to handler kwargs:
-        - ``user``: the ``User`` ORM instance
+        - ``user``: a ``UserDTO`` (Pydantic, not ORM)
         - ``db_session``: the ``AsyncSession`` (auto-committed on success)
     """
 

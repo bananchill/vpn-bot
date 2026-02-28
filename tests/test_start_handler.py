@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram.types import Chat, Message, User
 
+from bot.dto import UserDTO
 from bot.handlers.start import back_to_main, cmd_start
+
+NOW = datetime.now(tz=UTC)
 
 
 def _make_message(text: str | None = None, user_id: int = 123456) -> MagicMock:
@@ -26,19 +30,22 @@ def _make_message(text: str | None = None, user_id: int = 123456) -> MagicMock:
     return msg
 
 
-def _make_db_user(user_id: int = 1, telegram_id: int = 123456) -> MagicMock:
-    """Create a mock DB User."""
-    user = MagicMock()
-    user.id = user_id
-    user.telegram_id = telegram_id
-    return user
+def _make_user_dto(user_id: int = 1, telegram_id: int = 123456) -> UserDTO:
+    """Create a UserDTO for handler tests."""
+    return UserDTO(
+        id=user_id,
+        telegram_id=telegram_id,
+        username="testuser",
+        is_admin=False,
+        created_at=NOW,
+    )
 
 
 class TestCmdStart:
     @pytest.mark.asyncio
     async def test_shows_main_menu(self) -> None:
         msg = _make_message("/start")
-        user = _make_db_user()
+        user = _make_user_dto()
 
         await cmd_start(msg, user)
 
@@ -53,7 +60,7 @@ class TestCmdStart:
         msg = _make_message("/start")
         msg.from_user.username = None
         msg.from_user.first_name = "John"
-        user = _make_db_user()
+        user = _make_user_dto()
 
         await cmd_start(msg, user)
 
@@ -69,7 +76,7 @@ class TestBackToMain:
         callback.message = MagicMock()
         callback.message.edit_text = AsyncMock()
         callback.answer = AsyncMock()
-        user = _make_db_user()
+        user = _make_user_dto()
 
         await back_to_main(callback, user)
 

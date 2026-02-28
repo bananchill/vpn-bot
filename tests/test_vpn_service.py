@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from bot.dto import ConfigDTO
 from bot.services.vpn_service import (
     TrafficInfo,
     create_config,
@@ -14,6 +16,25 @@ from bot.services.vpn_service import (
     get_config_link,
     get_config_traffic,
 )
+
+NOW = datetime.now(tz=UTC)
+
+
+def _make_config_dto(
+    config_id: int = 1,
+    inbound_id: int = 1,
+    client_id: str = "uuid-123",
+    email: str = "test",
+) -> ConfigDTO:
+    return ConfigDTO(
+        id=config_id,
+        user_id=1,
+        inbound_id=inbound_id,
+        client_id=client_id,
+        email=email,
+        protocol="vless",
+        created_at=NOW,
+    )
 
 
 class TestTrafficInfo:
@@ -65,12 +86,11 @@ class TestCreateConfig:
         xui.get_inbound = AsyncMock(return_value=inbound_data)
         xui.add_client = AsyncMock()
 
-        mock_config = MagicMock()
-        mock_config.id = 1
+        config_dto = _make_config_dto()
 
         with patch("bot.services.vpn_service.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
-            mock_repo.create = AsyncMock(return_value=mock_config)
+            mock_repo.create = AsyncMock(return_value=config_dto)
 
             with patch("bot.services.vpn_service.generate_link_from_inbound") as mock_gen:
                 mock_gen.return_value = "vless://test-link"
@@ -94,15 +114,11 @@ class TestDeleteConfig:
         xui = AsyncMock()
         session = AsyncMock()
 
-        mock_config = MagicMock()
-        mock_config.id = 1
-        mock_config.inbound_id = 1
-        mock_config.client_id = "uuid-123"
-        mock_config.email = "test"
+        config_dto = _make_config_dto(config_id=1, inbound_id=1, client_id="uuid-123", email="test")
 
         with patch("bot.services.vpn_service.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_by_id = AsyncMock(return_value=mock_config)
+            mock_repo.get_by_id = AsyncMock(return_value=config_dto)
             mock_repo.delete = AsyncMock()
 
             await delete_config(config_id=1, xui=xui, session=session)
@@ -158,11 +174,7 @@ class TestGetConfigLink:
         xui = AsyncMock()
         session = AsyncMock()
 
-        mock_config = MagicMock()
-        mock_config.id = 1
-        mock_config.inbound_id = 1
-        mock_config.client_id = "uuid-123"
-        mock_config.email = "test"
+        config_dto = _make_config_dto(config_id=1, inbound_id=1, client_id="uuid-123", email="test")
 
         xui.get_inbound = AsyncMock(return_value={"protocol": "vless"})
 
@@ -171,7 +183,7 @@ class TestGetConfigLink:
             patch("bot.services.vpn_service.generate_link_from_inbound") as mock_gen,
         ):
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_by_id = AsyncMock(return_value=mock_config)
+            mock_repo.get_by_id = AsyncMock(return_value=config_dto)
             mock_gen.return_value = "vless://link"
 
             link = await get_config_link(config_id=1, xui=xui, session=session)

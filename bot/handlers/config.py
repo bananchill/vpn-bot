@@ -11,8 +11,9 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
-from bot.db.models import User
+from bot.db.repositories.admin_session_repo import AdminSessionRepository
 from bot.db.repositories.config_repo import ConfigRepository
+from bot.dto import UserDTO
 from bot.keyboards.menus import config_detail_menu, config_list, confirm_delete, main_menu
 from bot.services.crypto import decrypt_credentials
 from bot.services.vpn_service import (
@@ -49,20 +50,15 @@ async def _get_xui_client(session: AsyncSession) -> XUIClient | None:
 
     Returns None if no admin session is configured.
     """
-    # Use the first available admin session
-    from sqlalchemy import select
+    repo = AdminSessionRepository(session)
+    credentials = await repo.get_first_credentials()
 
-    from bot.db.models import AdminSession
-
-    stmt = select(AdminSession).limit(1)
-    result = await session.execute(stmt)
-    admin_session = result.scalar_one_or_none()
-
-    if admin_session is None:
+    if credentials is None:
         return None
 
-    creds = decrypt_credentials(admin_session.encrypted_credentials)
-    xui = XUIClient(admin_session.panel_url)
+    panel_url, encrypted_credentials = credentials
+    creds = decrypt_credentials(encrypted_credentials)
+    xui = XUIClient(panel_url)
     await xui.login(creds["username"], creds["password"])
     return xui
 
@@ -76,7 +72,7 @@ async def _get_xui_client(session: AsyncSession) -> XUIClient | None:
 async def start_create_config(
     callback: CallbackQuery,
     state: FSMContext,
-    user: User,
+    user: UserDTO,
 ) -> None:
     """Start the config creation flow — ask for a name."""
     await state.set_state(ConfigCreateStates.waiting_for_name)
@@ -91,7 +87,7 @@ async def start_create_config(
 async def process_config_name(
     message: Message,
     state: FSMContext,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Receive config name and create the config on the panel."""
@@ -165,7 +161,7 @@ async def config_name_not_text(message: Message) -> None:
 @router.callback_query(F.data == "my_configs")
 async def list_configs(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Show list of user's configs."""
@@ -196,7 +192,7 @@ async def list_configs(
 @router.callback_query(F.data.regexp(r"^config:(\d+):detail$"))
 async def show_config_detail(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Show detail menu for a specific config."""
@@ -225,7 +221,7 @@ async def show_config_detail(
 @router.callback_query(F.data.regexp(r"^config:(\d+):traffic$"))
 async def show_traffic(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Show traffic stats for a config."""
@@ -256,6 +252,7 @@ async def show_traffic(
     except XUIError as exc:
         logger.error("Failed to get traffic: %s", exc)
         await callback.answer("Ошибка при получении трафика.", show_alert=True)
+        return
 
     await callback.answer()
 
@@ -268,7 +265,7 @@ async def show_traffic(
 @router.callback_query(F.data.regexp(r"^config:(\d+):link$"))
 async def show_link(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Generate and show connection link for a config."""
@@ -300,6 +297,7 @@ async def show_link(
     except XUIError as exc:
         logger.error("Failed to get link: %s", exc)
         await callback.answer("Ошибка при генерации ссылки.", show_alert=True)
+        return
 
     await callback.answer()
 
@@ -312,7 +310,7 @@ async def show_link(
 @router.callback_query(F.data.regexp(r"^config:(\d+):refresh$"))
 async def refresh_config(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Refresh config — fetch fresh link from panel."""
@@ -344,6 +342,7 @@ async def refresh_config(
     except XUIError as exc:
         logger.error("Failed to refresh config: %s", exc)
         await callback.answer("Ошибка при обновлении конфига.", show_alert=True)
+        return
 
     await callback.answer()
 
@@ -356,7 +355,7 @@ async def refresh_config(
 @router.callback_query(F.data.regexp(r"^config:(\d+):delete$"))
 async def ask_delete_config(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Ask for delete confirmation."""
@@ -379,7 +378,7 @@ async def ask_delete_config(
 @router.callback_query(F.data.regexp(r"^config:(\d+):confirm_delete$"))
 async def confirm_delete_config(
     callback: CallbackQuery,
-    user: User,
+    user: UserDTO,
     db_session: AsyncSession,
 ) -> None:
     """Delete config after confirmation."""
@@ -409,5 +408,6 @@ async def confirm_delete_config(
     except XUIError as exc:
         logger.error("Failed to delete config: %s", exc)
         await callback.answer("Ошибка при удалении конфига.", show_alert=True)
+        return
 
     await callback.answer()

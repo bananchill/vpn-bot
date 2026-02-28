@@ -3,12 +3,26 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.types import CallbackQuery, Message, User
 
+from bot.dto import UserDTO
 from bot.middlewares.auth import AuthMiddleware
+
+NOW = datetime.now(tz=UTC)
+
+
+def _make_user_dto() -> UserDTO:
+    return UserDTO(
+        id=1,
+        telegram_id=123456,
+        username="testuser",
+        is_admin=False,
+        created_at=NOW,
+    )
 
 
 class TestAuthMiddleware:
@@ -17,7 +31,7 @@ class TestAuthMiddleware:
         return AuthMiddleware()
 
     @pytest.mark.asyncio
-    async def test_injects_user_and_session(self, middleware: AuthMiddleware) -> None:
+    async def test_injects_user_dto_and_session(self, middleware: AuthMiddleware) -> None:
         handler = AsyncMock()
 
         event = MagicMock(spec=Message)
@@ -27,7 +41,7 @@ class TestAuthMiddleware:
         event.from_user = tg_user
 
         mock_session = AsyncMock()
-        mock_db_user = MagicMock()
+        user_dto = _make_user_dto()
 
         @asynccontextmanager
         async def fake_session_factory():
@@ -44,14 +58,15 @@ class TestAuthMiddleware:
             patch("bot.middlewares.auth.UserRepository") as mock_repo_cls,
         ):
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_or_create = AsyncMock(return_value=mock_db_user)
+            mock_repo.get_or_create = AsyncMock(return_value=user_dto)
 
             data: dict = {}
             await middleware(handler, event, data)
 
         handler.assert_called_once()
         call_data = handler.call_args[0][1]
-        assert call_data["user"] == mock_db_user
+        assert isinstance(call_data["user"], UserDTO)
+        assert call_data["user"].telegram_id == 123456
         assert call_data["db_session"] == mock_session
 
     @pytest.mark.asyncio
@@ -65,7 +80,7 @@ class TestAuthMiddleware:
         event.from_user = tg_user
 
         mock_session = AsyncMock()
-        mock_db_user = MagicMock()
+        user_dto = _make_user_dto()
 
         @asynccontextmanager
         async def fake_session_factory():
@@ -82,7 +97,7 @@ class TestAuthMiddleware:
             patch("bot.middlewares.auth.UserRepository") as mock_repo_cls,
         ):
             mock_repo = mock_repo_cls.return_value
-            mock_repo.get_or_create = AsyncMock(return_value=mock_db_user)
+            mock_repo.get_or_create = AsyncMock(return_value=user_dto)
 
             data: dict = {}
             await middleware(handler, event, data)

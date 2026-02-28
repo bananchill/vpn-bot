@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from dataclasses import dataclass
@@ -84,8 +85,6 @@ async def create_config(
     # Add flow for VLESS with Reality
     if protocol == "vless":
         stream_raw = inbound.get("streamSettings", "{}")
-        import json
-
         stream = json.loads(stream_raw) if isinstance(stream_raw, str) else stream_raw
         security = stream.get("security", "none")
         if security == "reality":

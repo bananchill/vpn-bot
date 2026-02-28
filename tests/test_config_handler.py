@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +11,7 @@ from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import CallbackQuery, Chat, Message, User
 
+from bot.dto import ConfigDTO, UserDTO
 from bot.handlers.config import (
     ConfigCreateStates,
     ask_delete_config,
@@ -26,6 +28,8 @@ from bot.handlers.config import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+NOW = datetime.now(tz=UTC)
 
 
 def _make_callback(data: str, user_id: int = 123456) -> MagicMock:
@@ -61,31 +65,33 @@ def _make_state() -> FSMContext:
     return FSMContext(storage=storage, key=key)
 
 
-def _make_db_user(user_id: int = 1) -> MagicMock:
-    """Create a mock DB User."""
-    user = MagicMock()
-    user.id = user_id
-    user.telegram_id = 123456
-    return user
+def _make_user_dto(user_id: int = 1) -> UserDTO:
+    """Create a UserDTO for handler tests."""
+    return UserDTO(
+        id=user_id,
+        telegram_id=123456,
+        username="testuser",
+        is_admin=False,
+        created_at=NOW,
+    )
 
 
-def _make_db_config(
+def _make_config_dto(
     config_id: int = 1,
     user_id: int = 1,
     email: str = "test-config",
     protocol: str = "vless",
-) -> MagicMock:
-    """Create a mock DB Config."""
-    config = MagicMock()
-    config.id = config_id
-    config.user_id = user_id
-    config.inbound_id = 1
-    config.client_id = "uuid-123"
-    config.email = email
-    config.protocol = protocol
-    config.created_at = MagicMock()
-    config.created_at.strftime.return_value = "01.01.2026 12:00"
-    return config
+) -> ConfigDTO:
+    """Create a ConfigDTO for handler tests."""
+    return ConfigDTO(
+        id=config_id,
+        user_id=user_id,
+        inbound_id=1,
+        client_id="uuid-123",
+        email=email,
+        protocol=protocol,
+        created_at=NOW,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +104,7 @@ class TestStartCreateConfig:
     async def test_sets_fsm_state(self) -> None:
         cb = _make_callback("create_config")
         state = _make_state()
-        user = _make_db_user()
+        user = _make_user_dto()
 
         await start_create_config(cb, state, user)
 
@@ -115,7 +121,7 @@ class TestProcessConfigName:
         msg = _make_message("bad name with spaces!")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         await process_config_name(msg, state, user, session)
@@ -128,7 +134,7 @@ class TestProcessConfigName:
         msg = _make_message("my-config")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         status_msg = AsyncMock()
@@ -164,7 +170,7 @@ class TestProcessConfigName:
         msg = _make_message("my-config")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         status_msg = AsyncMock()
@@ -186,7 +192,7 @@ class TestProcessConfigName:
         msg = _make_message("   ")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         await process_config_name(msg, state, user, session)
@@ -213,7 +219,7 @@ class TestListConfigs:
     @pytest.mark.asyncio
     async def test_empty_list(self) -> None:
         cb = _make_callback("my_configs")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
@@ -229,10 +235,13 @@ class TestListConfigs:
     @pytest.mark.asyncio
     async def test_shows_configs(self) -> None:
         cb = _make_callback("my_configs")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
-        configs = [_make_db_config(1, email="cfg-1"), _make_db_config(2, email="cfg-2")]
+        configs = [
+            _make_config_dto(1, email="cfg-1"),
+            _make_config_dto(2, email="cfg-2"),
+        ]
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
@@ -252,9 +261,9 @@ class TestShowConfigDetail:
     @pytest.mark.asyncio
     async def test_shows_detail(self) -> None:
         cb = _make_callback("config:1:detail")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
-        config = _make_db_config(1)
+        config = _make_config_dto(1)
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
@@ -269,7 +278,7 @@ class TestShowConfigDetail:
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
         cb = _make_callback("config:999:detail")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
@@ -284,9 +293,9 @@ class TestShowConfigDetail:
     @pytest.mark.asyncio
     async def test_wrong_user(self) -> None:
         cb = _make_callback("config:1:detail")
-        user = _make_db_user(user_id=999)
+        user = _make_user_dto(user_id=999)
         session = AsyncMock()
-        config = _make_db_config(1, user_id=1)
+        config = _make_config_dto(1, user_id=1)
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
@@ -306,9 +315,9 @@ class TestShowTraffic:
     @pytest.mark.asyncio
     async def test_shows_traffic(self) -> None:
         cb = _make_callback("config:1:traffic")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
-        config = _make_db_config(1)
+        config = _make_config_dto(1)
 
         from bot.services.vpn_service import TrafficInfo
 
@@ -347,9 +356,9 @@ class TestShowLink:
     @pytest.mark.asyncio
     async def test_shows_link(self) -> None:
         cb = _make_callback("config:1:link")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
-        config = _make_db_config(1)
+        config = _make_config_dto(1)
         mock_xui = AsyncMock()
 
         with (
@@ -384,9 +393,9 @@ class TestDeleteConfig:
     @pytest.mark.asyncio
     async def test_ask_delete_shows_confirmation(self) -> None:
         cb = _make_callback("config:1:delete")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
-        config = _make_db_config(1)
+        config = _make_config_dto(1)
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
@@ -401,9 +410,9 @@ class TestDeleteConfig:
     @pytest.mark.asyncio
     async def test_confirm_delete_succeeds(self) -> None:
         cb = _make_callback("config:1:confirm_delete")
-        user = _make_db_user()
+        user = _make_user_dto()
         session = AsyncMock()
-        config = _make_db_config(1)
+        config = _make_config_dto(1)
         mock_xui = AsyncMock()
 
         with (

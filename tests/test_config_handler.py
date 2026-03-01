@@ -131,6 +131,8 @@ class TestProcessConfigName:
 
     @pytest.mark.asyncio
     async def test_valid_name_creates_config(self) -> None:
+        from bot.services.vpn_service import ConfigLinks
+
         msg = _make_message("my-config")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
@@ -141,6 +143,10 @@ class TestProcessConfigName:
         msg.answer = AsyncMock(return_value=status_msg)
 
         mock_xui = AsyncMock()
+        mock_links = ConfigLinks(
+            vless_link="vless://test-link",
+            subscription_url="http://localhost:2053/sub/uuid-123",
+        )
 
         with (
             patch(
@@ -151,7 +157,7 @@ class TestProcessConfigName:
             patch(
                 "bot.handlers.config.create_config",
                 new_callable=AsyncMock,
-                return_value="vless://test-link",
+                return_value=mock_links,
             ) as mock_create,
         ):
             await process_config_name(msg, state, user, session)
@@ -161,12 +167,15 @@ class TestProcessConfigName:
         final_text = status_msg.edit_text.call_args[0][0]
         assert "my-config" in final_text
         assert "vless://test-link" in final_text
+        assert "http://localhost:2053/sub/uuid-123" in final_text
 
         current = await state.get_state()
         assert current is None
 
     @pytest.mark.asyncio
-    async def test_no_admin_session(self) -> None:
+    async def test_xui_login_failure_shows_error(self) -> None:
+        from bot.services.xui_client import XUIError
+
         msg = _make_message("my-config")
         state = _make_state()
         await state.set_state(ConfigCreateStates.waiting_for_name)
@@ -179,13 +188,13 @@ class TestProcessConfigName:
         with patch(
             "bot.handlers.config._get_xui_client",
             new_callable=AsyncMock,
-            return_value=None,
+            side_effect=XUIError("login failed"),
         ):
             await process_config_name(msg, state, user, session)
 
         status_msg.edit_text.assert_called()
         final_text = status_msg.edit_text.call_args[0][0]
-        assert "администратор" in final_text.lower()
+        assert "ошибка" in final_text.lower()
 
     @pytest.mark.asyncio
     async def test_empty_name_rejected(self) -> None:
@@ -355,11 +364,17 @@ class TestShowTraffic:
 class TestShowLink:
     @pytest.mark.asyncio
     async def test_shows_link(self) -> None:
+        from bot.services.vpn_service import ConfigLinks
+
         cb = _make_callback("config:1:link")
         user = _make_user_dto()
         session = AsyncMock()
         config = _make_config_dto(1)
         mock_xui = AsyncMock()
+        mock_links = ConfigLinks(
+            vless_link="vless://test-link",
+            subscription_url="http://localhost:2053/sub/uuid-123",
+        )
 
         with (
             patch("bot.handlers.config.ConfigRepository") as mock_repo_cls,
@@ -371,7 +386,7 @@ class TestShowLink:
             patch(
                 "bot.handlers.config.get_config_link",
                 new_callable=AsyncMock,
-                return_value="vless://test-link",
+                return_value=mock_links,
             ),
         ):
             mock_repo = mock_repo_cls.return_value
@@ -382,6 +397,7 @@ class TestShowLink:
         cb.message.edit_text.assert_called_once()
         text = cb.message.edit_text.call_args[0][0]
         assert "vless://test-link" in text
+        assert "http://localhost:2053/sub/uuid-123" in text
 
 
 # ---------------------------------------------------------------------------

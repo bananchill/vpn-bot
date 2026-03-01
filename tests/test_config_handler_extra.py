@@ -56,11 +56,17 @@ def _make_config_dto(config_id: int = 1, user_id: int = 1) -> ConfigDTO:
 class TestRefreshConfig:
     @pytest.mark.asyncio
     async def test_refresh_success_edits_message(self) -> None:
+        from bot.services.vpn_service import ConfigLinks
+
         cb = _make_callback("config:1:refresh")
         user = _make_user_dto()
         session = AsyncMock()
         config = _make_config_dto(1)
         mock_xui = AsyncMock()
+        mock_links = ConfigLinks(
+            vless_link="vless://refreshed-link",
+            subscription_url="http://localhost:2053/sub/uuid-123",
+        )
 
         with (
             patch("bot.handlers.config.ConfigRepository") as mock_repo_cls,
@@ -72,7 +78,7 @@ class TestRefreshConfig:
             patch(
                 "bot.handlers.config.get_config_link",
                 new_callable=AsyncMock,
-                return_value="vless://refreshed-link",
+                return_value=mock_links,
             ),
         ):
             mock_repo = mock_repo_cls.return_value
@@ -84,6 +90,7 @@ class TestRefreshConfig:
         text = cb.message.edit_text.call_args[0][0]
         assert "обновлён" in text.lower()
         assert "vless://refreshed-link" in text
+        assert "http://localhost:2053/sub/uuid-123" in text
 
     @pytest.mark.asyncio
     async def test_refresh_not_found_shows_alert(self) -> None:
@@ -117,7 +124,7 @@ class TestRefreshConfig:
         assert cb.message.edit_text.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_refresh_no_admin_session_shows_alert(self) -> None:
+    async def test_refresh_xui_login_failure_shows_alert(self) -> None:
         cb = _make_callback("config:1:refresh")
         user = _make_user_dto()
         session = AsyncMock()
@@ -128,7 +135,7 @@ class TestRefreshConfig:
             patch(
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
-                return_value=None,
+                side_effect=XUIError("login failed"),
             ),
         ):
             mock_repo = mock_repo_cls.return_value
@@ -175,7 +182,7 @@ class TestRefreshConfig:
 
 class TestConfirmDeleteEdgeCases:
     @pytest.mark.asyncio
-    async def test_confirm_delete_no_admin_session_shows_alert(self) -> None:
+    async def test_confirm_delete_xui_login_failure_shows_alert(self) -> None:
         from bot.handlers.config import confirm_delete_config
 
         cb = _make_callback("config:1:confirm_delete")
@@ -188,7 +195,7 @@ class TestConfirmDeleteEdgeCases:
             patch(
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
-                return_value=None,
+                side_effect=XUIError("login failed"),
             ),
         ):
             mock_repo = mock_repo_cls.return_value
@@ -238,7 +245,7 @@ class TestConfirmDeleteEdgeCases:
 
 class TestShowTrafficEdgeCases:
     @pytest.mark.asyncio
-    async def test_show_traffic_no_admin_session_shows_alert(self) -> None:
+    async def test_show_traffic_xui_login_failure_shows_alert(self) -> None:
         from bot.handlers.config import show_traffic
 
         cb = _make_callback("config:1:traffic")
@@ -251,7 +258,7 @@ class TestShowTrafficEdgeCases:
             patch(
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
-                return_value=None,
+                side_effect=XUIError("login failed"),
             ),
         ):
             mock_repo = mock_repo_cls.return_value
@@ -270,7 +277,7 @@ class TestShowTrafficEdgeCases:
 
 class TestShowLinkEdgeCases:
     @pytest.mark.asyncio
-    async def test_show_link_no_admin_session_shows_alert(self) -> None:
+    async def test_show_link_xui_login_failure_shows_alert(self) -> None:
         from bot.handlers.config import show_link
 
         cb = _make_callback("config:1:link")
@@ -283,7 +290,7 @@ class TestShowLinkEdgeCases:
             patch(
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
-                return_value=None,
+                side_effect=XUIError("login failed"),
             ),
         ):
             mock_repo = mock_repo_cls.return_value

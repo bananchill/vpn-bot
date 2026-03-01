@@ -7,10 +7,29 @@ import pytest
 
 from bot.services.link_generator import (
     generate_link_from_inbound,
+    generate_subscription_url,
     generate_trojan_link,
     generate_vless_link,
     generate_vmess_link,
 )
+
+
+class TestGenerateSubscriptionUrl:
+    def test_basic_url(self) -> None:
+        url = generate_subscription_url("http://host:2053", "some-uuid")
+        assert url == "http://host:2053/sub/some-uuid"
+
+    def test_strips_trailing_slash(self) -> None:
+        url = generate_subscription_url("http://host:2053/", "some-uuid")
+        assert url == "http://host:2053/sub/some-uuid"
+
+    def test_strips_multiple_trailing_slashes(self) -> None:
+        url = generate_subscription_url("http://host:2053///", "some-uuid")
+        assert url == "http://host:2053/sub/some-uuid"
+
+    def test_preserves_path_in_panel_url(self) -> None:
+        url = generate_subscription_url("http://host:2053/panel", "uuid-123")
+        assert url == "http://host:2053/panel/sub/uuid-123"
 
 
 class TestGenerateVlessLink:

@@ -150,6 +150,7 @@ class TestProcessConfigName:
         )
 
         with (
+            patch("bot.handlers.config.ConfigRepository") as mock_repo_cls,
             patch(
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
@@ -161,6 +162,9 @@ class TestProcessConfigName:
                 return_value=mock_links,
             ) as mock_create,
         ):
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.count_by_user_id = AsyncMock(return_value=0)
+
             await process_config_name(msg, state, user, session)
 
         mock_create.assert_called_once()
@@ -186,11 +190,17 @@ class TestProcessConfigName:
         status_msg = AsyncMock()
         msg.answer = AsyncMock(return_value=status_msg)
 
-        with patch(
-            "bot.handlers.config._get_xui_client",
-            new_callable=AsyncMock,
-            side_effect=XUIError("login failed"),
+        with (
+            patch("bot.handlers.config.ConfigRepository") as mock_repo_cls,
+            patch(
+                "bot.handlers.config._get_xui_client",
+                new_callable=AsyncMock,
+                side_effect=XUIError("login failed"),
+            ),
         ):
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.count_by_user_id = AsyncMock(return_value=0)
+
             await process_config_name(msg, state, user, session)
 
         status_msg.edit_text.assert_called()
@@ -209,6 +219,30 @@ class TestProcessConfigName:
 
         msg.answer.assert_called_once()
         assert "некорректное" in msg.answer.call_args[0][0].lower()
+
+    @pytest.mark.asyncio
+    async def test_config_limit_reached(self) -> None:
+        """When user already has MAX_CONFIGS_PER_USER configs, creation is blocked."""
+        msg = _make_message("new-config")
+        state = _make_state()
+        await state.set_state(ConfigCreateStates.waiting_for_name)
+        user = _make_user_dto()
+        session = AsyncMock()
+
+        with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.count_by_user_id = AsyncMock(return_value=7)
+
+            await process_config_name(msg, state, user, session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "лимит" in text.lower()
+        assert "7/7" in text
+
+        # FSM state should be cleared so user can navigate freely
+        current = await state.get_state()
+        assert current is None
 
 
 class TestConfigNameNotText:

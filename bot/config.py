@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     PANEL_PASSWORD: str  # 3x-ui panel password
     ENCRYPTION_KEY: str  # Fernet key for encrypting admin credentials
     OWNER_ID: int  # Telegram user ID of the bot owner
+    MAX_CONFIGS_PER_USER: int = 7
 
 
 settings = Settings()  # type: ignore[call-arg]

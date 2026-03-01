@@ -39,6 +39,8 @@ def generate_vless_link(
     fingerprint: str = "chrome",
     public_key: str = "",
     short_id: str = "",
+    spider_x: str = "",
+    mldsa65_verify: str = "",
     network: str = "tcp",
     header_type: str = "none",
 ) -> str:
@@ -48,6 +50,7 @@ def generate_vless_link(
     """
     params: dict[str, str] = {
         "type": network,
+        "encryption": "none",
         "security": security,
     }
     if flow:
@@ -60,6 +63,10 @@ def generate_vless_link(
         params["pbk"] = public_key
     if short_id:
         params["sid"] = short_id
+    if spider_x:
+        params["spx"] = spider_x
+    if mldsa65_verify:
+        params["pqv"] = mldsa65_verify
     if header_type and header_type != "none":
         params["headerType"] = header_type
 
@@ -138,6 +145,8 @@ def generate_link_from_inbound(
     inbound: dict[str, Any],
     client_id: str,
     remark: str,
+    *,
+    server_host: str = "",
 ) -> str:
     """Generate a connection link by parsing inbound settings.
 
@@ -145,6 +154,8 @@ def generate_link_from_inbound(
         inbound: Full inbound dict from the 3x-ui API.
         client_id: UUID of the client.
         remark: Human-readable name for the config.
+        server_host: Fallback server address when inbound listen is empty
+            (e.g. the panel's public IP extracted from PANEL_URL).
 
     Returns:
         Connection link string.
@@ -163,8 +174,9 @@ def generate_link_from_inbound(
     stream_raw = inbound.get("streamSettings", "{}")
     stream = json.loads(stream_raw) if isinstance(stream_raw, str) else stream_raw
 
-    # Extract server address from the listen field or SNI
-    server = inbound.get("listen", "")
+    # When listen is empty the inbound accepts on all interfaces;
+    # use the caller-supplied server_host (panel's public IP) as fallback.
+    server = inbound.get("listen", "") or server_host
     network = stream.get("network", "tcp")
     security = stream.get("security", "none")
 
@@ -176,9 +188,11 @@ def generate_link_from_inbound(
     # Reality-specific settings
     reality_settings = tls_settings.get("settings", {})
     public_key = reality_settings.get("publicKey", "")
-    short_ids = reality_settings.get("shortIds", [])
+    short_ids = tls_settings.get("shortIds", [])
     short_id = short_ids[0] if short_ids else ""
     fingerprint = reality_settings.get("fingerprint", "chrome")
+    spider_x = reality_settings.get("spiderX", "")
+    mldsa65_verify = reality_settings.get("mldsa65Verify", "")
 
     # Find the specific client to get flow
     clients = settings.get("clients", [])
@@ -200,6 +214,8 @@ def generate_link_from_inbound(
             fingerprint=fingerprint,
             public_key=public_key,
             short_id=short_id,
+            spider_x=spider_x,
+            mldsa65_verify=mldsa65_verify,
             network=network,
         )
     elif protocol == "vmess":

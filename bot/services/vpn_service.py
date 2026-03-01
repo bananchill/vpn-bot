@@ -10,8 +10,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import settings
 from bot.db.repositories.config_repo import ConfigRepository
-from bot.services.link_generator import generate_link_from_inbound
+from bot.services.link_generator import generate_link_from_inbound, generate_subscription_url
 from bot.services.xui_client import XUIClient
 
 logger = logging.getLogger(__name__)
@@ -48,14 +49,22 @@ class TrafficInfo:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ConfigLinks:
+    """Both connection links for a VPN config."""
+
+    vless_link: str
+    subscription_url: str
+
+
 async def create_config(
     user_id: int,
     name: str,
     inbound_id: int,
     xui: XUIClient,
     session: AsyncSession,
-) -> str:
-    """Create a new VPN config and return the connection link.
+) -> ConfigLinks:
+    """Create a new VPN config and return both connection links.
 
     Args:
         user_id: Internal DB user ID.
@@ -65,7 +74,7 @@ async def create_config(
         session: DB session (caller manages transaction).
 
     Returns:
-        Connection link string.
+        ConfigLinks with vless_link and subscription_url.
     """
     client_uuid = str(uuid.uuid4())
 
@@ -104,10 +113,11 @@ async def create_config(
 
     # Fetch updated inbound to generate link with all settings
     inbound = await xui.get_inbound(inbound_id)
-    link = generate_link_from_inbound(inbound, client_uuid, name)
+    vless_link = generate_link_from_inbound(inbound, client_uuid, name)
+    subscription_url = generate_subscription_url(settings.PANEL_URL, client_uuid)
 
     logger.info("Created config '%s' (uuid=%s) for user_id=%s", name, client_uuid, user_id)
-    return link
+    return ConfigLinks(vless_link=vless_link, subscription_url=subscription_url)
 
 
 async def delete_config(
@@ -168,8 +178,8 @@ async def get_config_link(
     config_id: int,
     xui: XUIClient,
     session: AsyncSession,
-) -> str:
-    """Generate a connection link for an existing config.
+) -> ConfigLinks:
+    """Generate both connection links for an existing config.
 
     Args:
         config_id: Internal DB config ID.
@@ -177,7 +187,7 @@ async def get_config_link(
         session: DB session.
 
     Returns:
-        Connection link string.
+        ConfigLinks with vless_link and subscription_url.
 
     Raises:
         ValueError: If config not found.
@@ -188,4 +198,6 @@ async def get_config_link(
         raise ValueError(f"Config with id={config_id} not found")
 
     inbound = await xui.get_inbound(config.inbound_id)
-    return generate_link_from_inbound(inbound, config.client_id, config.email)
+    vless_link = generate_link_from_inbound(inbound, config.client_id, config.email)
+    subscription_url = generate_subscription_url(settings.PANEL_URL, config.client_id)
+    return ConfigLinks(vless_link=vless_link, subscription_url=subscription_url)

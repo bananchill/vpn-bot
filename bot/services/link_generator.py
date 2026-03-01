@@ -11,6 +11,22 @@ from urllib.parse import quote, urlencode
 logger = logging.getLogger(__name__)
 
 
+def generate_subscription_url(panel_url: str, client_uuid: str) -> str:
+    """Generate a subscription URL for all client configs.
+
+    The subscription URL allows V2Ray/Xray clients to fetch all configs
+    associated with the given UUID from the panel in a single request.
+
+    Args:
+        panel_url: Base panel URL (e.g. "http://host:2053").
+        client_uuid: Client UUID stored in the panel.
+
+    Returns:
+        Subscription URL in the format ``{panel_url}/sub/{client_uuid}``.
+    """
+    return f"{panel_url.rstrip('/')}/sub/{client_uuid}"
+
+
 def generate_vless_link(
     uuid: str,
     server: str,

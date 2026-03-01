@@ -10,6 +10,7 @@ import pytest
 
 from bot.dto import ConfigDTO
 from bot.services.vpn_service import (
+    ConfigLinks,
     TrafficInfo,
     create_config,
     delete_config,
@@ -69,7 +70,7 @@ class TestTrafficInfo:
 
 class TestCreateConfig:
     @pytest.mark.asyncio
-    async def test_creates_config_and_returns_link(self) -> None:
+    async def test_creates_config_and_returns_config_links(self) -> None:
         xui = AsyncMock()
         session = AsyncMock()
 
@@ -95,7 +96,7 @@ class TestCreateConfig:
             with patch("bot.services.vpn_service.generate_link_from_inbound") as mock_gen:
                 mock_gen.return_value = "vless://test-link"
 
-                link = await create_config(
+                result = await create_config(
                     user_id=1,
                     name="test-config",
                     inbound_id=1,
@@ -103,7 +104,10 @@ class TestCreateConfig:
                     session=session,
                 )
 
-        assert link == "vless://test-link"
+        assert isinstance(result, ConfigLinks)
+        assert result.vless_link == "vless://test-link"
+        # Subscription URL built from settings.PANEL_URL and the generated UUID
+        assert "/sub/" in result.subscription_url
         xui.add_client.assert_called_once()
         mock_repo.create.assert_called_once()
 
@@ -170,7 +174,7 @@ class TestGetConfigTraffic:
 
 class TestGetConfigLink:
     @pytest.mark.asyncio
-    async def test_returns_link(self) -> None:
+    async def test_returns_config_links(self) -> None:
         xui = AsyncMock()
         session = AsyncMock()
 
@@ -186,9 +190,11 @@ class TestGetConfigLink:
             mock_repo.get_by_id = AsyncMock(return_value=config_dto)
             mock_gen.return_value = "vless://link"
 
-            link = await get_config_link(config_id=1, xui=xui, session=session)
+            result = await get_config_link(config_id=1, xui=xui, session=session)
 
-        assert link == "vless://link"
+        assert isinstance(result, ConfigLinks)
+        assert result.vless_link == "vless://link"
+        assert result.subscription_url == "http://localhost:2053/sub/uuid-123"
 
     @pytest.mark.asyncio
     async def test_raises_if_not_found(self) -> None:

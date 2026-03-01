@@ -8,6 +8,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -118,7 +119,8 @@ async def create_config(
 
     # Fetch updated inbound to generate link with all settings
     inbound = await xui.get_inbound(inbound_id)
-    vless_link = generate_link_from_inbound(inbound, client_uuid, name)
+    panel_host = urlparse(settings.PANEL_URL).hostname or ""
+    vless_link = generate_link_from_inbound(inbound, client_uuid, name, server_host=panel_host)
     subscription_url = generate_subscription_url(settings.PANEL_URL, sub_id)
 
     logger.info(
@@ -211,6 +213,9 @@ async def get_config_link(
         )
 
     inbound = await xui.get_inbound(config.inbound_id)
-    vless_link = generate_link_from_inbound(inbound, config.client_id, config.email)
+    panel_host = urlparse(settings.PANEL_URL).hostname or ""
+    vless_link = generate_link_from_inbound(
+        inbound, config.client_id, config.email, server_host=panel_host
+    )
     subscription_url = generate_subscription_url(settings.PANEL_URL, config.sub_id)
     return ConfigLinks(vless_link=vless_link, subscription_url=subscription_url)

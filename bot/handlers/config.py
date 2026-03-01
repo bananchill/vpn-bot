@@ -17,6 +17,7 @@ from bot.dto import UserDTO
 from bot.keyboards.menus import config_detail_menu, config_list, confirm_delete, main_menu
 from bot.keyboards.reply import BTN_CREATE_CONFIG, BTN_MY_CONFIGS
 from bot.services.vpn_service import (
+    ConfigLinks,
     create_config,
     delete_config,
     get_config_link,
@@ -43,6 +44,16 @@ class ConfigCreateStates(StatesGroup):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _format_links(links: ConfigLinks) -> str:
+    """Format both VPN links into a user-facing HTML message block."""
+    return (
+        f"Прямая ссылка (один конфиг):\n"
+        f"<code>{links.vless_link}</code>\n\n"
+        f"Ссылка-подписка (все конфиги):\n"
+        f"<code>{links.subscription_url}</code>"
+    )
 
 
 async def _get_xui_client() -> XUIClient:
@@ -141,7 +152,7 @@ async def process_config_name(
     try:
         xui = await _get_xui_client()
         try:
-            link = await create_config(
+            links = await create_config(
                 user_id=user.id,
                 name=name,
                 inbound_id=settings.DEFAULT_INBOUND_ID,
@@ -153,7 +164,7 @@ async def process_config_name(
 
         await status_msg.edit_text(
             f"Конфиг «{name}» создан!\n\n"
-            f"Ссылка для подключения:\n<code>{link}</code>",
+            f"{_format_links(links)}",
             parse_mode="HTML",
             reply_markup=main_menu(),
         )
@@ -302,13 +313,13 @@ async def show_link(
     try:
         xui = await _get_xui_client()
         try:
-            link = await get_config_link(config.id, xui, db_session)
+            links = await get_config_link(config.id, xui, db_session)
         finally:
             await xui.close()
 
         await callback.message.edit_text(
             f"Ссылка для «{config.email}»:\n\n"
-            f"<code>{link}</code>",
+            f"{_format_links(links)}",
             parse_mode="HTML",
             reply_markup=config_detail_menu(config.id),
         )
@@ -343,13 +354,13 @@ async def refresh_config(
     try:
         xui = await _get_xui_client()
         try:
-            link = await get_config_link(config.id, xui, db_session)
+            links = await get_config_link(config.id, xui, db_session)
         finally:
             await xui.close()
 
         await callback.message.edit_text(
             f"Конфиг «{config.email}» обновлён.\n\n"
-            f"Ссылка:\n<code>{link}</code>",
+            f"{_format_links(links)}",
             parse_mode="HTML",
             reply_markup=config_detail_menu(config.id),
         )

@@ -65,6 +65,8 @@ class Config(Base):
     )
     inbound_id: Mapped[int] = mapped_column(Integer, nullable=False)
     client_id: Mapped[str] = mapped_column(String(36), nullable=False)  # UUID
+    # 3x-ui subscription identifier (16 hex chars); used in /sub/{sub_id} URL
+    sub_id: Mapped[str] = mapped_column(String(16), nullable=False, server_default="")
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     protocol: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

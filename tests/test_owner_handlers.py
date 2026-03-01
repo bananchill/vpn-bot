@@ -10,9 +10,9 @@ from aiogram.types import Chat, Message, User
 
 from bot.dto import UserDTO
 from bot.handlers.owner import (
+    _MISSING,
     IsOwnerFilter,
     _extract_arg,
-    _MISSING,
     cmd_admins,
     cmd_rm_admin,
     cmd_set_admin,

@@ -147,6 +147,19 @@ async def process_config_name(
         )
         return
 
+    # Guard: enforce per-user config limit before hitting the panel
+    config_repo = ConfigRepository(db_session)
+    config_count = await config_repo.count_by_user_id(user.id)
+    max_configs = settings.MAX_CONFIGS_PER_USER
+    if config_count >= max_configs:
+        await message.answer(
+            f"Достигнут лимит конфигов ({max_configs}/{max_configs}). "
+            "Удалите старый конфиг, чтобы создать новый.",
+            reply_markup=main_menu(),
+        )
+        await state.clear()
+        return
+
     status_msg = await message.answer("Создаю конфиг...")
 
     try:

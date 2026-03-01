@@ -1,6 +1,6 @@
 """Repository for Config CRUD operations."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import Config
@@ -51,6 +51,12 @@ class ConfigRepository:
         stmt = select(Config).where(Config.user_id == user_id).order_by(Config.created_at.desc())
         result = await self._session.execute(stmt)
         return [ConfigDTO.model_validate(c) for c in result.scalars().all()]
+
+    async def count_by_user_id(self, user_id: int) -> int:
+        """Return the total number of configs owned by a user."""
+        stmt = select(func.count()).select_from(Config).where(Config.user_id == user_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
 
     async def get_by_email(self, email: str) -> ConfigDTO | None:
         """Return a config by its email (client identifier in 3x-ui)."""

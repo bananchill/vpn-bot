@@ -81,7 +81,7 @@ async def reply_create_config(
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await message.answer(
         "Введите название для нового конфига:\n"
-        "(латинские буквы, цифры, без пробелов)"
+        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)"
     )
 
 
@@ -124,7 +124,7 @@ async def start_create_config(
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await callback.message.edit_text(
         "Введите название для нового конфига:\n"
-        "(латинские буквы, цифры, без пробелов)"
+        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)"
     )
     await callback.answer()
 
@@ -137,7 +137,8 @@ async def process_config_name(
     db_session: AsyncSession,
 ) -> None:
     """Receive config name and create the config on the panel."""
-    name = message.text.strip()
+    # 3x-ui panel rejects uppercase in the email field, so normalize to lowercase
+    name = message.text.strip().lower()
 
     # Validate name
     if not name or not name.replace("-", "").replace("_", "").isalnum():

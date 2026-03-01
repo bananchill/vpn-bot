@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DEFAULT_INBOUND_ID: int = 1
     PANEL_URL: str
+    PANEL_SUB_URL: str  # Base URL for subscription links (e.g. https://host:2096)
     PANEL_USERNAME: str  # 3x-ui panel login
     PANEL_PASSWORD: str  # 3x-ui panel password
     ENCRYPTION_KEY: str  # Fernet key for encrypting admin credentials

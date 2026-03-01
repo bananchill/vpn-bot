@@ -26,6 +26,7 @@ class ConfigDTO(BaseModel):
     user_id: int
     inbound_id: int
     client_id: str
+    sub_id: str
     email: str
     protocol: str
     created_at: datetime

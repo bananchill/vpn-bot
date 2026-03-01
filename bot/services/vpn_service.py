@@ -121,7 +121,7 @@ async def create_config(
     inbound = await xui.get_inbound(inbound_id)
     panel_host = urlparse(settings.PANEL_URL).hostname or ""
     vless_link = generate_link_from_inbound(inbound, client_uuid, name, server_host=panel_host)
-    subscription_url = generate_subscription_url(settings.PANEL_URL, sub_id)
+    subscription_url = generate_subscription_url(settings.PANEL_SUB_URL, sub_id)
 
     logger.info(
         "Created config '%s' (uuid=%s, sub_id=%s) for user_id=%s",

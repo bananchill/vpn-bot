@@ -65,6 +65,7 @@ class TestConfigDTO:
             user_id=1,
             inbound_id=2,
             client_id="uuid-abc",
+            sub_id="abcdef0123456789",
             email="my-config",
             protocol="vless",
             created_at=NOW,
@@ -73,6 +74,7 @@ class TestConfigDTO:
         assert config.user_id == 1
         assert config.inbound_id == 2
         assert config.client_id == "uuid-abc"
+        assert config.sub_id == "abcdef0123456789"
         assert config.email == "my-config"
         assert config.protocol == "vless"
 
@@ -83,6 +85,7 @@ class TestConfigDTO:
         orm_like.user_id = 7
         orm_like.inbound_id = 3
         orm_like.client_id = "some-uuid"
+        orm_like.sub_id = "abcdef0123456789"
         orm_like.email = "cfg@test"
         orm_like.protocol = "vmess"
         orm_like.created_at = NOW
@@ -90,6 +93,7 @@ class TestConfigDTO:
         dto = ConfigDTO.model_validate(orm_like)
 
         assert dto.id == 42
+        assert dto.sub_id == "abcdef0123456789"
         assert dto.protocol == "vmess"
 
     def test_is_pydantic_not_orm(self) -> None:

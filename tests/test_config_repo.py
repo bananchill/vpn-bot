@@ -36,6 +36,7 @@ class TestConfigRepository:
             user_id=1,
             inbound_id=1,
             client_id="uuid-123",
+            sub_id="abcdef0123456789",
             email="test@config",
             protocol="vless",
         )
@@ -44,6 +45,7 @@ class TestConfigRepository:
         assert isinstance(config, ConfigDTO)
         assert config.user_id == 1
         assert config.client_id == "uuid-123"
+        assert config.sub_id == "abcdef0123456789"
         assert config.email == "test@config"
         assert config.protocol == "vless"
         assert config.created_at == now
@@ -56,6 +58,7 @@ class TestConfigRepository:
         mock_config.user_id = 1
         mock_config.inbound_id = 1
         mock_config.client_id = "uuid-123"
+        mock_config.sub_id = "abcdef0123456789"
         mock_config.email = "test@config"
         mock_config.protocol = "vless"
         mock_config.created_at = now
@@ -68,6 +71,7 @@ class TestConfigRepository:
 
         assert isinstance(result, ConfigDTO)
         assert result.id == 42
+        assert result.sub_id == "abcdef0123456789"
         assert result.email == "test@config"
 
     @pytest.mark.asyncio
@@ -90,6 +94,7 @@ class TestConfigRepository:
             m.user_id = 1
             m.inbound_id = 1
             m.client_id = f"uuid-{config_id}"
+            m.sub_id = f"sub{config_id:015d}"
             m.email = email
             m.protocol = "vless"
             m.created_at = now
@@ -115,6 +120,7 @@ class TestConfigRepository:
         mock_config.user_id = 1
         mock_config.inbound_id = 1
         mock_config.client_id = "uuid-123"
+        mock_config.sub_id = "abcdef0123456789"
         mock_config.email = "test@config"
         mock_config.protocol = "vless"
         mock_config.created_at = now

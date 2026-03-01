@@ -10,6 +10,7 @@ from aiogram.types import Chat, Message, User
 
 from bot.dto import UserDTO
 from bot.handlers.start import back_to_main, cmd_start
+from bot.keyboards.reply import reply_main_menu
 
 NOW = datetime.now(tz=UTC)
 
@@ -43,17 +44,41 @@ def _make_user_dto(user_id: int = 1, telegram_id: int = 123456) -> UserDTO:
 
 class TestCmdStart:
     @pytest.mark.asyncio
-    async def test_shows_main_menu(self) -> None:
+    async def test_sends_two_messages(self) -> None:
+        """cmd_start sends greeting with reply keyboard, then inline menu."""
         msg = _make_message("/start")
         user = _make_user_dto()
 
         await cmd_start(msg, user)
 
-        msg.answer.assert_called_once()
-        call_kwargs = msg.answer.call_args
-        text = call_kwargs[0][0]
+        assert msg.answer.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_first_message_has_greeting_and_reply_keyboard(self) -> None:
+        msg = _make_message("/start")
+        user = _make_user_dto()
+
+        await cmd_start(msg, user)
+
+        first_call = msg.answer.call_args_list[0]
+        text = first_call[0][0]
         assert "testuser" in text
-        assert call_kwargs[1]["reply_markup"] is not None
+        # First message sets the persistent reply keyboard
+        reply_markup = first_call[1]["reply_markup"]
+        expected_kb = reply_main_menu()
+        assert type(reply_markup) is type(expected_kb)
+
+    @pytest.mark.asyncio
+    async def test_second_message_has_inline_menu(self) -> None:
+        msg = _make_message("/start")
+        user = _make_user_dto()
+
+        await cmd_start(msg, user)
+
+        second_call = msg.answer.call_args_list[1]
+        text = second_call[0][0]
+        assert "действие" in text.lower()
+        assert second_call[1]["reply_markup"] is not None
 
     @pytest.mark.asyncio
     async def test_greets_by_first_name_if_no_username(self) -> None:
@@ -64,7 +89,7 @@ class TestCmdStart:
 
         await cmd_start(msg, user)
 
-        text = msg.answer.call_args[0][0]
+        text = msg.answer.call_args_list[0][0][0]
         assert "John" in text
 
 

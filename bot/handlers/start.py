@@ -10,6 +10,7 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.dto import UserDTO
 from bot.keyboards.menus import main_menu
+from bot.keyboards.reply import reply_main_menu
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +19,20 @@ router = Router(name="start")
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, user: UserDTO) -> None:
-    """Handle /start command — greet user and show main menu."""
+    """Handle /start command — greet user and show main menu.
+
+    Sends two messages: first sets the persistent reply keyboard under
+    the input field, then shows the inline menu for quick navigation.
+    """
     name = message.from_user.username or message.from_user.first_name or "пользователь"
+    # First message sets the persistent reply keyboard panel
     await message.answer(
         f"Привет, {name}!\n"
-        "Я помогу управлять VPN-конфигурациями.\n"
+        "Я помогу управлять VPN-конфигурациями.",
+        reply_markup=reply_main_menu(),
+    )
+    # Second message shows inline buttons for immediate action
+    await message.answer(
         "Выберите действие:",
         reply_markup=main_menu(),
     )

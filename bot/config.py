@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DEFAULT_INBOUND_ID: int = 1
     PANEL_URL: str
+    PANEL_USERNAME: str  # 3x-ui panel login
+    PANEL_PASSWORD: str  # 3x-ui panel password
     ENCRYPTION_KEY: str  # Fernet key for encrypting admin credentials
     OWNER_ID: int  # Telegram user ID of the bot owner
 

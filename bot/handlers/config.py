@@ -5,17 +5,17 @@ from __future__ import annotations
 import logging
 
 from aiogram import F, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
-from bot.db.repositories.admin_session_repo import AdminSessionRepository
 from bot.db.repositories.config_repo import ConfigRepository
 from bot.dto import UserDTO
 from bot.keyboards.menus import config_detail_menu, config_list, confirm_delete, main_menu
-from bot.services.crypto import decrypt_credentials
+from bot.keyboards.reply import BTN_CREATE_CONFIG, BTN_MY_CONFIGS
 from bot.services.vpn_service import (
     create_config,
     delete_config,
@@ -45,22 +45,57 @@ class ConfigCreateStates(StatesGroup):
 # ---------------------------------------------------------------------------
 
 
-async def _get_xui_client(session: AsyncSession) -> XUIClient | None:
-    """Get an authenticated XUI client using admin credentials from DB.
-
-    Returns None if no admin session is configured.
-    """
-    repo = AdminSessionRepository(session)
-    credentials = await repo.get_first_credentials()
-
-    if credentials is None:
-        return None
-
-    panel_url, encrypted_credentials = credentials
-    creds = decrypt_credentials(encrypted_credentials)
-    xui = XUIClient(panel_url)
-    await xui.login(creds["username"], creds["password"])
+async def _get_xui_client() -> XUIClient:
+    """Get an authenticated XUI client using credentials from settings."""
+    xui = XUIClient(settings.PANEL_URL)
+    await xui.login(settings.PANEL_USERNAME, settings.PANEL_PASSWORD)
     return xui
+
+
+# ---------------------------------------------------------------------------
+# Reply keyboard handlers.
+# StateFilter(None) ensures these fire ONLY when no FSM state is active.
+# When the user is in waiting_for_name, these filters do not match and the
+# FSM handler (ConfigCreateStates.waiting_for_name) takes priority automatically.
+# ---------------------------------------------------------------------------
+
+
+@router.message(F.text == BTN_CREATE_CONFIG, StateFilter(None))
+async def reply_create_config(
+    message: Message,
+    state: FSMContext,
+    user: UserDTO,
+) -> None:
+    """Handle 'Создать конфиг' reply button — start config creation FSM."""
+    await state.set_state(ConfigCreateStates.waiting_for_name)
+    await message.answer(
+        "Введите название для нового конфига:\n"
+        "(латинские буквы, цифры, без пробелов)"
+    )
+
+
+@router.message(F.text == BTN_MY_CONFIGS, StateFilter(None))
+async def reply_my_configs(
+    message: Message,
+    user: UserDTO,
+    db_session: AsyncSession,
+) -> None:
+    """Handle 'Мои конфиги' reply button — show user's config list."""
+    config_repo = ConfigRepository(db_session)
+    configs = await config_repo.get_by_user_id(user.id)
+
+    if not configs:
+        await message.answer(
+            "У вас пока нет конфигов.",
+            reply_markup=main_menu(),
+        )
+        return
+
+    items = [(c.id, c.email) for c in configs]
+    await message.answer(
+        "Ваши конфиги:",
+        reply_markup=config_list(items),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -104,16 +139,7 @@ async def process_config_name(
     status_msg = await message.answer("Создаю конфиг...")
 
     try:
-        xui = await _get_xui_client(db_session)
-        if xui is None:
-            await status_msg.edit_text(
-                "Администратор ещё не настроил подключение к панели.\n"
-                "Обратитесь к администратору.",
-                reply_markup=main_menu(),
-            )
-            await state.clear()
-            return
-
+        xui = await _get_xui_client()
         try:
             link = await create_config(
                 user_id=user.id,
@@ -234,11 +260,7 @@ async def show_traffic(
         return
 
     try:
-        xui = await _get_xui_client(db_session)
-        if xui is None:
-            await callback.answer("Панель не настроена.", show_alert=True)
-            return
-
+        xui = await _get_xui_client()
         try:
             traffic = await get_config_traffic(config.email, xui)
         finally:
@@ -278,11 +300,7 @@ async def show_link(
         return
 
     try:
-        xui = await _get_xui_client(db_session)
-        if xui is None:
-            await callback.answer("Панель не настроена.", show_alert=True)
-            return
-
+        xui = await _get_xui_client()
         try:
             link = await get_config_link(config.id, xui, db_session)
         finally:
@@ -323,11 +341,7 @@ async def refresh_config(
         return
 
     try:
-        xui = await _get_xui_client(db_session)
-        if xui is None:
-            await callback.answer("Панель не настроена.", show_alert=True)
-            return
-
+        xui = await _get_xui_client()
         try:
             link = await get_config_link(config.id, xui, db_session)
         finally:
@@ -391,11 +405,7 @@ async def confirm_delete_config(
         return
 
     try:
-        xui = await _get_xui_client(db_session)
-        if xui is None:
-            await callback.answer("Панель не настроена.", show_alert=True)
-            return
-
+        xui = await _get_xui_client()
         try:
             await delete_config(config.id, xui, db_session)
         finally:

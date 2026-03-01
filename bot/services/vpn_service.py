@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -77,6 +78,8 @@ async def create_config(
         ConfigLinks with vless_link and subscription_url.
     """
     client_uuid = str(uuid.uuid4())
+    # 3x-ui uses a separate subId field for subscription URLs (/sub/{subId})
+    sub_id = secrets.token_hex(8)
 
     # Get inbound info to determine protocol
     inbound = await xui.get_inbound(inbound_id)
@@ -89,6 +92,7 @@ async def create_config(
         "enable": True,
         "totalGB": 0,
         "expiryTime": 0,
+        "subId": sub_id,
     }
 
     # Add flow for VLESS with Reality
@@ -107,6 +111,7 @@ async def create_config(
         user_id=user_id,
         inbound_id=inbound_id,
         client_id=client_uuid,
+        sub_id=sub_id,
         email=name,
         protocol=protocol,
     )
@@ -114,9 +119,12 @@ async def create_config(
     # Fetch updated inbound to generate link with all settings
     inbound = await xui.get_inbound(inbound_id)
     vless_link = generate_link_from_inbound(inbound, client_uuid, name)
-    subscription_url = generate_subscription_url(settings.PANEL_URL, client_uuid)
+    subscription_url = generate_subscription_url(settings.PANEL_URL, sub_id)
 
-    logger.info("Created config '%s' (uuid=%s) for user_id=%s", name, client_uuid, user_id)
+    logger.info(
+        "Created config '%s' (uuid=%s, sub_id=%s) for user_id=%s",
+        name, client_uuid, sub_id, user_id,
+    )
     return ConfigLinks(vless_link=vless_link, subscription_url=subscription_url)
 
 
@@ -196,8 +204,13 @@ async def get_config_link(
     config = await config_repo.get_by_id(config_id)
     if config is None:
         raise ValueError(f"Config with id={config_id} not found")
+    if not config.sub_id:
+        raise ValueError(
+            f"Config id={config_id} has no sub_id (created before migration). "
+            "Please re-create the config."
+        )
 
     inbound = await xui.get_inbound(config.inbound_id)
     vless_link = generate_link_from_inbound(inbound, config.client_id, config.email)
-    subscription_url = generate_subscription_url(settings.PANEL_URL, config.client_id)
+    subscription_url = generate_subscription_url(settings.PANEL_URL, config.sub_id)
     return ConfigLinks(vless_link=vless_link, subscription_url=subscription_url)

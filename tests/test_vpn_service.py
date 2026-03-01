@@ -25,6 +25,7 @@ def _make_config_dto(
     config_id: int = 1,
     inbound_id: int = 1,
     client_id: str = "uuid-123",
+    sub_id: str = "abcdef0123456789",
     email: str = "test",
 ) -> ConfigDTO:
     return ConfigDTO(
@@ -32,6 +33,7 @@ def _make_config_dto(
         user_id=1,
         inbound_id=inbound_id,
         client_id=client_id,
+        sub_id=sub_id,
         email=email,
         protocol="vless",
         created_at=NOW,
@@ -106,10 +108,18 @@ class TestCreateConfig:
 
         assert isinstance(result, ConfigLinks)
         assert result.vless_link == "vless://test-link"
-        # Subscription URL built from settings.PANEL_URL and the generated UUID
+        # Subscription URL uses sub_id, not client UUID
         assert "/sub/" in result.subscription_url
         xui.add_client.assert_called_once()
+        # Verify subId is sent to the panel
+        client_settings = xui.add_client.call_args[0][1]
+        assert "subId" in client_settings
+        assert len(client_settings["subId"]) == 16  # secrets.token_hex(8) = 16 chars
         mock_repo.create.assert_called_once()
+        # Verify sub_id is passed to the repository
+        create_kwargs = mock_repo.create.call_args[1]
+        assert "sub_id" in create_kwargs
+        assert len(create_kwargs["sub_id"]) == 16
 
 
 class TestDeleteConfig:
@@ -194,7 +204,7 @@ class TestGetConfigLink:
 
         assert isinstance(result, ConfigLinks)
         assert result.vless_link == "vless://link"
-        assert result.subscription_url == "http://localhost:2053/sub/uuid-123"
+        assert result.subscription_url == "http://localhost:2053/sub/abcdef0123456789"
 
     @pytest.mark.asyncio
     async def test_raises_if_not_found(self) -> None:

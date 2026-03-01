@@ -42,6 +42,7 @@ def _make_config_dto(config_id: int = 1, user_id: int = 1) -> ConfigDTO:
         user_id=user_id,
         inbound_id=1,
         client_id="uuid-123",
+        sub_id="abcdef0123456789",
         email="test-config",
         protocol="vless",
         created_at=NOW,

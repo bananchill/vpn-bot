@@ -18,6 +18,7 @@ class ConfigRepository:
         user_id: int,
         inbound_id: int,
         client_id: str,
+        sub_id: str,
         email: str,
         protocol: str,
     ) -> ConfigDTO:
@@ -26,6 +27,7 @@ class ConfigRepository:
             user_id=user_id,
             inbound_id=inbound_id,
             client_id=client_id,
+            sub_id=sub_id,
             email=email,
             protocol=protocol,
         )

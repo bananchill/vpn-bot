@@ -78,12 +78,13 @@
 
 ## Критерии приёмки
 
-- [ ] `generate_subscription_url("http://host:2053", "some-uuid")` возвращает
-  `"http://host:2053/sub/some-uuid"`
+- [ ] `generate_subscription_url("http://host:2053", "gy2hpqt5zvyizs3x")` возвращает
+  `"http://host:2053/sub/gy2hpqt5zvyizs3x"`
+- [ ] При создании конфига генерируется `sub_id` (16 hex символов), передаётся в 3x-ui как `subId` и сохраняется в БД
 - [ ] После создания конфига бот показывает оба блока: прямую ссылку и subscription URL
 - [ ] При нажатии "Получить ссылку" бот показывает оба блока
 - [ ] При нажатии "Обновить конфиг" бот показывает оба блока
-- [ ] Subscription URL строится из `settings.PANEL_URL` и `config.client_id` — без обращения
+- [ ] Subscription URL строится из `settings.PANEL_URL` и `config.sub_id` — без обращения
   к панели
 - [ ] Типы в сервисном слое строгие: везде `ConfigLinks`, не `str`
 - [ ] Новые и изменённые функции покрыты тестами

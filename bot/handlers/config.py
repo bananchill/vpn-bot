@@ -14,7 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import settings
 from bot.db.repositories.config_repo import ConfigRepository
 from bot.dto import UserDTO
-from bot.keyboards.menus import config_detail_menu, config_list, confirm_delete, main_menu
+from bot.keyboards.menus import (
+    cancel_config_creation,
+    config_detail_menu,
+    config_list,
+    confirm_delete,
+    main_menu,
+)
 from bot.keyboards.reply import BTN_CREATE_CONFIG, BTN_MY_CONFIGS
 from bot.services.vpn_service import (
     ConfigLinks,
@@ -81,7 +87,8 @@ async def reply_create_config(
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await message.answer(
         "Введите название для нового конфига:\n"
-        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)"
+        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)",
+        reply_markup=cancel_config_creation(),
     )
 
 
@@ -124,7 +131,25 @@ async def start_create_config(
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await callback.message.edit_text(
         "Введите название для нового конфига:\n"
-        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)"
+        "(латинские буквы, цифры, дефис или подчёркивание — без пробелов)",
+        reply_markup=cancel_config_creation(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(
+    F.data == "cancel_config_creation",
+    StateFilter(ConfigCreateStates.waiting_for_name),
+)
+async def cancel_config_creation_handler(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Cancel config creation — clear FSM and return to main menu."""
+    await state.clear()
+    await callback.message.edit_text(
+        "Создание конфига отменено.",
+        reply_markup=main_menu(),
     )
     await callback.answer()
 
@@ -144,12 +169,35 @@ async def process_config_name(
     if not name or not name.replace("-", "").replace("_", "").isalnum():
         await message.answer(
             "Некорректное название. Используйте латинские буквы, цифры, дефис или подчёркивание.\n"
-            "Попробуйте ещё раз:"
+            "Попробуйте ещё раз:",
+            reply_markup=cancel_config_creation(),
+        )
+        return
+
+    # Deduplication: check if this name is already taken before counting limits
+    config_repo = ConfigRepository(db_session)
+    existing = await config_repo.get_by_email(name)
+
+    if existing is not None:
+        if existing.user_id == user.id:
+            # User already owns a config with this name — show its detail view
+            await state.clear()
+            await message.answer(
+                f"Конфиг «{existing.email}» уже существует.\n\n"
+                f"Конфиг: {existing.email}\n"
+                f"Протокол: {existing.protocol}\n"
+                f"Создан: {existing.created_at.strftime('%d.%m.%Y %H:%M')}",
+                reply_markup=config_detail_menu(existing.id),
+            )
+            return
+        # Name is taken by another user — ask for a different name
+        await message.answer(
+            f"Имя «{name}» уже занято, попробуйте другое:",
+            reply_markup=cancel_config_creation(),
         )
         return
 
     # Guard: enforce per-user config limit before hitting the panel
-    config_repo = ConfigRepository(db_session)
     config_count = await config_repo.count_by_user_id(user.id)
     max_configs = settings.MAX_CONFIGS_PER_USER
     if config_count >= max_configs:
@@ -201,7 +249,10 @@ async def process_config_name(
 @router.message(ConfigCreateStates.waiting_for_name)
 async def config_name_not_text(message: Message) -> None:
     """Handle non-text input when expecting config name."""
-    await message.answer("Пожалуйста, отправьте название текстовым сообщением.")
+    await message.answer(
+        "Пожалуйста, отправьте название текстовым сообщением.",
+        reply_markup=cancel_config_creation(),
+    )
 
 
 # ---------------------------------------------------------------------------

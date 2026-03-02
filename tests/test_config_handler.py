@@ -15,10 +15,12 @@ from bot.dto import ConfigDTO, UserDTO
 from bot.handlers.config import (
     ConfigCreateStates,
     ask_delete_config,
+    cancel_config_creation_handler,
     config_name_not_text,
     confirm_delete_config,
     list_configs,
     process_config_name,
+    reply_create_config,
     show_config_detail,
     show_link,
     show_traffic,
@@ -113,7 +115,27 @@ class TestStartCreateConfig:
         assert current == ConfigCreateStates.waiting_for_name
         cb.message.edit_text.assert_called_once()
         assert "название" in cb.message.edit_text.call_args[0][0].lower()
+        # Cancel button must be present
+        call_kwargs = cb.message.edit_text.call_args[1]
+        assert call_kwargs.get("reply_markup") is not None
         cb.answer.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reply_create_config_sets_fsm_and_sends_prompt(self) -> None:
+        """reply_create_config (reply-keyboard entry) sets FSM and prompts for name."""
+        msg = _make_message("Создать конфиг")
+        state = _make_state()
+        user = _make_user_dto()
+
+        await reply_create_config(msg, state, user)
+
+        current = await state.get_state()
+        assert current == ConfigCreateStates.waiting_for_name
+        msg.answer.assert_called_once()
+        assert "название" in msg.answer.call_args[0][0].lower()
+        # Cancel button must be present
+        kwargs = msg.answer.call_args[1]
+        assert kwargs.get("reply_markup") is not None
 
 
 class TestProcessConfigName:
@@ -163,6 +185,7 @@ class TestProcessConfigName:
             ) as mock_create,
         ):
             mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=None)
             mock_repo.count_by_user_id = AsyncMock(return_value=0)
 
             await process_config_name(msg, state, user, session)
@@ -199,6 +222,7 @@ class TestProcessConfigName:
             ),
         ):
             mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=None)
             mock_repo.count_by_user_id = AsyncMock(return_value=0)
 
             await process_config_name(msg, state, user, session)
@@ -231,6 +255,7 @@ class TestProcessConfigName:
 
         with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
             mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=None)
             mock_repo.count_by_user_id = AsyncMock(return_value=7)
 
             await process_config_name(msg, state, user, session)
@@ -243,6 +268,102 @@ class TestProcessConfigName:
         # FSM state should be cleared so user can navigate freely
         current = await state.get_state()
         assert current is None
+
+
+class TestCancelConfigCreation:
+    @pytest.mark.asyncio
+    async def test_cancel_clears_state_and_shows_main_menu(self) -> None:
+        cb = _make_callback("cancel_config_creation")
+        state = _make_state()
+        await state.set_state(ConfigCreateStates.waiting_for_name)
+
+        await cancel_config_creation_handler(cb, state)
+
+        current = await state.get_state()
+        assert current is None
+        cb.message.edit_text.assert_called_once()
+        text = cb.message.edit_text.call_args[0][0]
+        assert "отменено" in text.lower()
+        cb.answer.assert_called_once()
+
+
+class TestNameDeduplication:
+    @pytest.mark.asyncio
+    async def test_own_config_shows_detail(self) -> None:
+        """When user enters a name they already own, show config detail."""
+        msg = _make_message("existing-config")
+        state = _make_state()
+        await state.set_state(ConfigCreateStates.waiting_for_name)
+        user = _make_user_dto(user_id=1)
+        session = AsyncMock()
+        existing = _make_config_dto(config_id=42, user_id=1, email="existing-config")
+
+        with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=existing)
+
+            await process_config_name(msg, state, user, session)
+
+        # FSM should be cleared
+        current = await state.get_state()
+        assert current is None
+        # Should show detail info about the existing config
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "уже существует" in text.lower()
+        assert "existing-config" in text
+
+    @pytest.mark.asyncio
+    async def test_other_user_config_asks_new_name(self) -> None:
+        """When name is taken by another user, ask for a different name."""
+        msg = _make_message("taken-name")
+        state = _make_state()
+        await state.set_state(ConfigCreateStates.waiting_for_name)
+        user = _make_user_dto(user_id=1)
+        session = AsyncMock()
+        # Config belongs to a different user (user_id=999)
+        existing = _make_config_dto(config_id=42, user_id=999, email="taken-name")
+
+        with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=existing)
+
+            await process_config_name(msg, state, user, session)
+
+        # FSM should NOT be cleared — user should be able to try again
+        current = await state.get_state()
+        assert current == ConfigCreateStates.waiting_for_name
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "уже занято" in text.lower()
+        assert "taken-name" in text
+        # Cancel button must be present so user can exit FSM
+        kwargs = msg.answer.call_args[1]
+        assert kwargs.get("reply_markup") is not None
+
+    @pytest.mark.asyncio
+    async def test_dedup_runs_before_limit_check(self) -> None:
+        """Deduplication should be checked before the config limit."""
+        msg = _make_message("existing-config")
+        state = _make_state()
+        await state.set_state(ConfigCreateStates.waiting_for_name)
+        user = _make_user_dto(user_id=1)
+        session = AsyncMock()
+        existing = _make_config_dto(config_id=42, user_id=1, email="existing-config")
+
+        with patch("bot.handlers.config.ConfigRepository") as mock_repo_cls:
+            mock_repo = mock_repo_cls.return_value
+            mock_repo.get_by_email = AsyncMock(return_value=existing)
+            # count_by_user_id should NOT be called if dedup short-circuits
+            mock_repo.count_by_user_id = AsyncMock(return_value=7)
+
+            await process_config_name(msg, state, user, session)
+
+        # Should show detail, not limit error
+        text = msg.answer.call_args[0][0]
+        assert "уже существует" in text.lower()
+        # count_by_user_id should not have been called
+        mock_repo.count_by_user_id.assert_not_called()
 
 
 class TestConfigNameNotText:

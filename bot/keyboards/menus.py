@@ -3,12 +3,16 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+SUPPORT_URL = "https://t.me/help_chat_b"
+
+
 def main_menu() -> InlineKeyboardMarkup:
     """Main menu shown after /start for regular users."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="\U0001f511 Создать конфиг", callback_data="create_config")],
             [InlineKeyboardButton(text="\U0001f4cb Мои конфиги", callback_data="my_configs")],
+            [InlineKeyboardButton(text="\U0001f4ac Поддержка", url=SUPPORT_URL)],
         ]
     )
 

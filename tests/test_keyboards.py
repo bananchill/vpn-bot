@@ -1,12 +1,18 @@
 """Tests for bot.keyboards.menus."""
 
-from bot.keyboards.menus import config_detail_menu, config_list, confirm_delete, main_menu
+from bot.keyboards.menus import (
+    cancel_config_creation,
+    config_detail_menu,
+    config_list,
+    confirm_delete,
+    main_menu,
+)
 
 
 class TestMainMenu:
-    def test_has_two_buttons(self) -> None:
+    def test_has_three_rows(self) -> None:
         kb = main_menu()
-        assert len(kb.inline_keyboard) == 2
+        assert len(kb.inline_keyboard) == 3
 
     def test_create_config_button(self) -> None:
         kb = main_menu()
@@ -86,4 +92,17 @@ class TestConfirmDelete:
         kb = confirm_delete(5)
         btn = kb.inline_keyboard[0][1]
         assert btn.callback_data == "config:5:detail"
+        assert "Отмена" in btn.text
+
+
+class TestCancelConfigCreation:
+    def test_has_single_cancel_button(self) -> None:
+        kb = cancel_config_creation()
+        assert len(kb.inline_keyboard) == 1
+        assert len(kb.inline_keyboard[0]) == 1
+
+    def test_cancel_button_callback_data(self) -> None:
+        kb = cancel_config_creation()
+        btn = kb.inline_keyboard[0][0]
+        assert btn.callback_data == "cancel_config_creation"
         assert "Отмена" in btn.text

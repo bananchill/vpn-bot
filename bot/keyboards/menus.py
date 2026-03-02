@@ -2,7 +2,6 @@
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-
 SUPPORT_URL = "https://t.me/help_chat_b"
 
 
@@ -61,6 +60,20 @@ def config_detail_menu(config_id: int) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="\U00002b05 Назад к списку",
                     callback_data="my_configs",
+                ),
+            ],
+        ]
+    )
+
+
+def cancel_config_creation() -> InlineKeyboardMarkup:
+    """Single 'Cancel' button shown during config name input FSM state."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="\U00002716 Отмена",
+                    callback_data="cancel_config_creation",
                 ),
             ],
         ]

@@ -20,10 +20,9 @@ class Settings(BaseSettings):
     MAX_CONFIGS_PER_USER: int = 7
 
     # Subscription & payment settings
-    SUBSCRIPTION_PRICE_RUB: int = 200
+    SUBSCRIPTION_PRICE_RUB: int = 1
     SUBSCRIPTION_STARS: int = 120
     SUBSCRIPTION_DAYS: int = 30
-    TON_PRICE_CACHE_TTL: int = 300  # seconds
 
 
 settings = Settings()  # type: ignore[call-arg]

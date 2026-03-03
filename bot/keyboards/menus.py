@@ -98,50 +98,32 @@ def confirm_delete(config_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def payment_menu(ton_amount_display: str | None) -> InlineKeyboardMarkup:
-    """Payment method selection menu.
-
-    Args:
-        ton_amount_display: Human-readable TON amount (e.g. "1.23") or None
-            if CoinGecko is unavailable — shows a disabled-style button.
-    """
+def payment_menu() -> InlineKeyboardMarkup:
+    """Payment method selection menu."""
     from bot.config import settings
 
-    rows: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text=f"\u2b50 Оплатить Stars ({settings.SUBSCRIPTION_STARS})",
-                callback_data="pay_stars",
-            ),
-        ],
-    ]
-    if ton_amount_display is not None:
-        rows.append([
-            InlineKeyboardButton(
-                text=f"\U0001f48e Оплатить TON (~{ton_amount_display} TON)",
-                callback_data="pay_ton",
-            ),
-        ])
-    else:
-        rows.append([
-            InlineKeyboardButton(
-                text="\U0001f48e Оплатить TON (недоступно)",
-                callback_data="pay_ton_unavailable",
-            ),
-        ])
-    rows.append([
-        InlineKeyboardButton(
-            text="\U0001f39f У меня есть промокод",
-            callback_data="enter_promo",
-        ),
-    ])
-    rows.append([
-        InlineKeyboardButton(
-            text="\u2b05 Назад",
-            callback_data="back_to_main",
-        ),
-    ])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"\u2b50 Оплатить Stars ({settings.SUBSCRIPTION_STARS})",
+                    callback_data="pay_stars",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="\U0001f39f У меня есть промокод",
+                    callback_data="enter_promo",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="\u2b05 Назад",
+                    callback_data="back_to_main",
+                ),
+            ],
+        ]
+    )
 
 
 def promo_cancel_menu() -> InlineKeyboardMarkup:

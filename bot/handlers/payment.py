@@ -1,4 +1,4 @@
-"""Payment handler -- Stars, TON, and promo code flows."""
+"""Payment handler -- Stars and promo code flows."""
 
 from __future__ import annotations
 
@@ -23,11 +23,6 @@ from bot.services.subscription_service import (
     activate_promo,
     sync_configs_expiry,
 )
-from bot.services.ton_price_service import (
-    TonPriceUnavailableError,
-    calculate_ton_nanotons,
-    format_ton_display,
-)
 from bot.services.xui_client import XUIClient
 
 logger = logging.getLogger(__name__)
@@ -49,15 +44,6 @@ class PaymentStates(StatesGroup):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-async def _get_ton_display() -> str | None:
-    """Return formatted TON amount or None if price service is unavailable."""
-    try:
-        nanotons = await calculate_ton_nanotons(settings.SUBSCRIPTION_PRICE_RUB)
-        return format_ton_display(nanotons)
-    except TonPriceUnavailableError:
-        return None
 
 
 async def _get_xui_client() -> XUIClient:
@@ -115,12 +101,11 @@ async def show_payment_menu(
 
     Called when a user without an active subscription tries to create a config.
     """
-    ton_display = await _get_ton_display()
     await callback.message.edit_text(
         "Для создания конфига требуется активная подписка.\n"
         f"Стоимость: {settings.SUBSCRIPTION_PRICE_RUB} \u20bd / "
         f"{settings.SUBSCRIPTION_DAYS} дней.",
-        reply_markup=payment_menu(ton_display),
+        reply_markup=payment_menu(),
     )
     await callback.answer()
 
@@ -129,12 +114,11 @@ async def show_payment_menu_message(
     message: Message,
 ) -> None:
     """Show the payment method selection menu via Message (reply-keyboard entry)."""
-    ton_display = await _get_ton_display()
     await message.answer(
         "Для создания конфига требуется активная подписка.\n"
         f"Стоимость: {settings.SUBSCRIPTION_PRICE_RUB} \u20bd / "
         f"{settings.SUBSCRIPTION_DAYS} дней.",
-        reply_markup=payment_menu(ton_display),
+        reply_markup=payment_menu(),
     )
 
 
@@ -150,12 +134,11 @@ async def renew_subscription(
     db_session: AsyncSession,
 ) -> None:
     """Handle the 'Renew subscription' button from expiry notifications."""
-    ton_display = await _get_ton_display()
     await callback.message.answer(
         "Для создания конфига требуется активная подписка.\n"
         f"Стоимость: {settings.SUBSCRIPTION_PRICE_RUB} \u20bd / "
         f"{settings.SUBSCRIPTION_DAYS} дней.",
-        reply_markup=payment_menu(ton_display),
+        reply_markup=payment_menu(),
     )
     await callback.answer()
 
@@ -211,70 +194,6 @@ async def successful_payment_stars(
 
 
 # ---------------------------------------------------------------------------
-# TON payment
-# ---------------------------------------------------------------------------
-
-
-@router.callback_query(F.data == "pay_ton")
-async def pay_ton(callback: CallbackQuery, bot: Bot) -> None:
-    """Send a TON invoice with dynamically calculated amount."""
-    try:
-        nanotons = await calculate_ton_nanotons(settings.SUBSCRIPTION_PRICE_RUB)
-    except TonPriceUnavailableError:
-        await callback.answer(
-            "Сервис временно недоступен. Попробуйте позже.",
-            show_alert=True,
-        )
-        return
-
-    display = format_ton_display(nanotons)
-    await bot.send_invoice(
-        chat_id=callback.message.chat.id,
-        title="VPN подписка",
-        description=f"Доступ к VPN на {settings.SUBSCRIPTION_DAYS} дней (~{display} TON)",
-        payload="subscription_ton",
-        currency="TON",
-        provider_token="",
-        prices=[LabeledPrice(label=f"VPN {settings.SUBSCRIPTION_DAYS} дней", amount=nanotons)],
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "pay_ton_unavailable")
-async def pay_ton_unavailable(callback: CallbackQuery) -> None:
-    """Handle click on the disabled TON button."""
-    await callback.answer(
-        "Сервис временно недоступен. Попробуйте позже.",
-        show_alert=True,
-    )
-
-
-@router.pre_checkout_query(F.invoice_payload == "subscription_ton")
-async def pre_checkout_ton(pre_checkout_query: PreCheckoutQuery, bot: Bot) -> None:
-    """Approve a TON pre-checkout query."""
-    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-
-
-@router.message(F.successful_payment.currency == "TON")
-async def successful_payment_ton(
-    message: Message,
-    user: UserDTO,
-    db_session: AsyncSession,
-) -> None:
-    """Handle successful TON payment -- activate subscription."""
-    sub = await activate(user.id, "ton", db_session)
-    expires_str = sub.expires_at.strftime("%d.%m.%Y")
-    await message.answer(
-        f"Подписка активирована! Действует до {expires_str}.",
-        reply_markup=main_menu(),
-    )
-    await _sync_after_payment(
-        user.id, sub.id, sub.expires_at, db_session, message,
-    )
-    logger.info("TON payment successful for user_id=%s", user.id)
-
-
-# ---------------------------------------------------------------------------
 # Promo code flow
 # ---------------------------------------------------------------------------
 
@@ -297,12 +216,11 @@ async def enter_promo(callback: CallbackQuery, state: FSMContext) -> None:
 async def cancel_promo(callback: CallbackQuery, state: FSMContext) -> None:
     """Cancel promo code input -- return to payment menu."""
     await state.clear()
-    ton_display = await _get_ton_display()
     await callback.message.edit_text(
         "Для создания конфига требуется активная подписка.\n"
         f"Стоимость: {settings.SUBSCRIPTION_PRICE_RUB} \u20bd / "
         f"{settings.SUBSCRIPTION_DAYS} дней.",
-        reply_markup=payment_menu(ton_display),
+        reply_markup=payment_menu(),
     )
     await callback.answer()
 

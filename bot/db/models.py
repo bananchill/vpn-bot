@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.db.base import Base
@@ -25,6 +25,9 @@ class User(Base):
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
     configs: Mapped[list["Config"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    subscriptions: Mapped[list["Subscription"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -77,3 +80,55 @@ class Config(Base):
 
     def __repr__(self) -> str:
         return f"<Config email={self.email} protocol={self.protocol}>"
+
+
+class Subscription(Base):
+    """User subscription record — grants access to config creation."""
+
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        Index("ix_subscriptions_user_expires", "user_id", "expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)  # "stars" / "ton" / "promo"
+    promo_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Notification flags — prevent duplicate messages from the scheduler
+    notified_3d: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notified_expired: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Retry flag — set when expiryTime sync to 3x-ui fails after payment
+    configs_sync_pending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="subscriptions")
+
+    def __repr__(self) -> str:
+        return (
+            f"<Subscription user_id={self.user_id} "
+            f"source={self.source} expires_at={self.expires_at}>"
+        )
+
+
+class PromoCode(Base):
+    """Reusable promotional code for granting subscriptions."""
+
+    __tablename__ = "promo_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    use_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

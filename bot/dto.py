@@ -37,3 +37,28 @@ class ConfigSummaryDTO(BaseModel):
 
     id: int
     email: str
+
+
+class SubscriptionDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    started_at: datetime
+    expires_at: datetime
+    source: str
+    promo_code: str | None
+    notified_3d: bool = False
+    notified_expired: bool = False
+    configs_sync_pending: bool = False
+    created_at: datetime
+
+
+class PromoCodeDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    is_active: bool
+    use_count: int
+    created_at: datetime

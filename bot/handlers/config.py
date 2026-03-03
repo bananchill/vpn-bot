@@ -22,6 +22,7 @@ from bot.keyboards.menus import (
     main_menu,
 )
 from bot.keyboards.reply import BTN_CREATE_CONFIG, BTN_MY_CONFIGS
+from bot.services import subscription_service
 from bot.services.vpn_service import (
     ConfigLinks,
     create_config,
@@ -82,8 +83,18 @@ async def reply_create_config(
     message: Message,
     state: FSMContext,
     user: UserDTO,
+    db_session: AsyncSession,
 ) -> None:
     """Handle 'Создать конфиг' reply button — start config creation FSM."""
+    # Non-admin users must have an active subscription
+    if not user.is_admin:
+        from bot.handlers.payment import show_payment_menu_message
+
+        sub = await subscription_service.get_active(user.id, db_session)
+        if sub is None:
+            await show_payment_menu_message(message)
+            return
+
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await message.answer(
         "Введите название для нового конфига:\n"
@@ -126,8 +137,18 @@ async def start_create_config(
     callback: CallbackQuery,
     state: FSMContext,
     user: UserDTO,
+    db_session: AsyncSession,
 ) -> None:
     """Start the config creation flow — ask for a name."""
+    # Non-admin users must have an active subscription
+    if not user.is_admin:
+        from bot.handlers.payment import show_payment_menu
+
+        sub = await subscription_service.get_active(user.id, db_session)
+        if sub is None:
+            await show_payment_menu(callback, user, db_session)
+            return
+
     await state.set_state(ConfigCreateStates.waiting_for_name)
     await callback.message.edit_text(
         "Введите название для нового конфига:\n"
@@ -209,6 +230,13 @@ async def process_config_name(
         await state.clear()
         return
 
+    # Determine expiry: admins get no limit, regular users inherit subscription expiry
+    config_expires_at = None
+    if not user.is_admin:
+        sub = await subscription_service.get_active(user.id, db_session)
+        if sub is not None:
+            config_expires_at = sub.expires_at
+
     status_msg = await message.answer("Создаю конфиг...")
 
     try:
@@ -220,6 +248,7 @@ async def process_config_name(
                 inbound_id=settings.DEFAULT_INBOUND_ID,
                 xui=xui,
                 session=db_session,
+                expires_at=config_expires_at,
             )
         finally:
             await xui.close()

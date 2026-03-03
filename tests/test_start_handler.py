@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.types import Chat, Message, User
@@ -31,13 +31,15 @@ def _make_message(text: str | None = None, user_id: int = 123456) -> MagicMock:
     return msg
 
 
-def _make_user_dto(user_id: int = 1, telegram_id: int = 123456) -> UserDTO:
+def _make_user_dto(
+    user_id: int = 1, telegram_id: int = 123456, is_admin: bool = False,
+) -> UserDTO:
     """Create a UserDTO for handler tests."""
     return UserDTO(
         id=user_id,
         telegram_id=telegram_id,
         username="testuser",
-        is_admin=False,
+        is_admin=is_admin,
         created_at=NOW,
     )
 
@@ -48,8 +50,14 @@ class TestCmdStart:
         """cmd_start sends greeting with reply keyboard, then inline menu."""
         msg = _make_message("/start")
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await cmd_start(msg, user)
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            await cmd_start(msg, user, session)
 
         assert msg.answer.call_count == 2
 
@@ -57,8 +65,14 @@ class TestCmdStart:
     async def test_first_message_has_greeting_and_reply_keyboard(self) -> None:
         msg = _make_message("/start")
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await cmd_start(msg, user)
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            await cmd_start(msg, user, session)
 
         first_call = msg.answer.call_args_list[0]
         text = first_call[0][0]
@@ -72,8 +86,14 @@ class TestCmdStart:
     async def test_second_message_has_inline_menu(self) -> None:
         msg = _make_message("/start")
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await cmd_start(msg, user)
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            await cmd_start(msg, user, session)
 
         second_call = msg.answer.call_args_list[1]
         text = second_call[0][0]
@@ -86,11 +106,74 @@ class TestCmdStart:
         msg.from_user.username = None
         msg.from_user.first_name = "John"
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await cmd_start(msg, user)
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            await cmd_start(msg, user, session)
 
         text = msg.answer.call_args_list[0][0][0]
         assert "John" in text
+
+    @pytest.mark.asyncio
+    async def test_shows_no_subscription_status(self) -> None:
+        """Non-admin without subscription sees inactive status."""
+        msg = _make_message("/start")
+        user = _make_user_dto()
+        session = AsyncMock()
+
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            await cmd_start(msg, user, session)
+
+        text = msg.answer.call_args_list[0][0][0]
+        assert "не активна" in text.lower()
+
+    @pytest.mark.asyncio
+    async def test_shows_active_subscription_status(self) -> None:
+        """Non-admin with active subscription sees expiry date."""
+        from bot.dto import SubscriptionDTO
+
+        msg = _make_message("/start")
+        user = _make_user_dto()
+        session = AsyncMock()
+        sub = SubscriptionDTO(
+            id=1,
+            user_id=1,
+            started_at=NOW,
+            expires_at=datetime(2026, 4, 1, tzinfo=UTC),
+            source="stars",
+            promo_code=None,
+            created_at=NOW,
+        )
+
+        with patch(
+            "bot.handlers.start.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=sub,
+        ):
+            await cmd_start(msg, user, session)
+
+        text = msg.answer.call_args_list[0][0][0]
+        assert "01.04.2026" in text
+
+    @pytest.mark.asyncio
+    async def test_admin_no_subscription_status(self) -> None:
+        """Admin users do not see subscription status."""
+        msg = _make_message("/start")
+        user = _make_user_dto(is_admin=True)
+        session = AsyncMock()
+
+        await cmd_start(msg, user, session)
+
+        text = msg.answer.call_args_list[0][0][0]
+        assert "подписка" not in text.lower()
 
 
 class TestBackToMain:

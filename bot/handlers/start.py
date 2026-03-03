@@ -7,10 +7,12 @@ import logging
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.dto import UserDTO
 from bot.keyboards.menus import main_menu
 from bot.keyboards.reply import reply_main_menu
+from bot.services import subscription_service
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +20,29 @@ router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, user: UserDTO) -> None:
+async def cmd_start(message: Message, user: UserDTO, db_session: AsyncSession) -> None:
     """Handle /start command — greet user and show main menu.
 
     Sends two messages: first sets the persistent reply keyboard under
     the input field, then shows the inline menu for quick navigation.
+    For non-admin users, also shows subscription status.
     """
     name = message.from_user.username or message.from_user.first_name or "пользователь"
+
+    # Build subscription status line for non-admin users
+    sub_line = ""
+    if not user.is_admin:
+        sub = await subscription_service.get_active(user.id, db_session)
+        if sub is not None:
+            expires_str = sub.expires_at.strftime("%d.%m.%Y")
+            sub_line = f"\n\u2705 Подписка до {expires_str}"
+        else:
+            sub_line = "\n\u274c Подписка не активна"
+
     # First message sets the persistent reply keyboard panel
     await message.answer(
         f"Привет, {name}!\n"
-        "Я помогу управлять VPN-конфигурациями.",
+        f"Я помогу управлять VPN-конфигурациями.{sub_line}",
         reply_markup=reply_main_menu(),
     )
     # Second message shows inline buttons for immediate action

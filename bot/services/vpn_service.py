@@ -7,6 +7,7 @@ import logging
 import secrets
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -65,6 +66,8 @@ async def create_config(
     inbound_id: int,
     xui: XUIClient,
     session: AsyncSession,
+    *,
+    expires_at: datetime | None = None,
 ) -> ConfigLinks:
     """Create a new VPN config and return both connection links.
 
@@ -74,6 +77,8 @@ async def create_config(
         inbound_id: Target inbound ID on the panel.
         xui: Authenticated XUI client.
         session: DB session (caller manages transaction).
+        expires_at: Subscription expiry — sets expiryTime in 3x-ui.
+            None (or missing) means no expiry limit (0).
 
     Returns:
         ConfigLinks with vless_link and subscription_url.
@@ -86,13 +91,16 @@ async def create_config(
     inbound = await xui.get_inbound(inbound_id)
     protocol = inbound.get("protocol", "vless")
 
+    # 3x-ui expects Unix timestamp in milliseconds; 0 means "no limit"
+    expiry_time_ms = int(expires_at.timestamp() * 1000) if expires_at else 0
+
     # Build client settings for 3x-ui
     client_settings: dict[str, Any] = {
         "id": client_uuid,
         "email": name,
         "enable": True,
         "totalGB": 0,
-        "expiryTime": 0,
+        "expiryTime": expiry_time_ms,
         "subId": sub_id,
     }
 

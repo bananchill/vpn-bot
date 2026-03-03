@@ -132,8 +132,14 @@ class TestReplyCreateConfig:
         msg = _make_message(BTN_CREATE_CONFIG)
         state = _make_state()
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await reply_create_config(msg, state, user)
+        with patch(
+            "bot.handlers.config.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ):
+            await reply_create_config(msg, state, user, session)
 
         current = await state.get_state()
         assert current == ConfigCreateStates.waiting_for_name
@@ -143,8 +149,14 @@ class TestReplyCreateConfig:
         msg = _make_message(BTN_CREATE_CONFIG)
         state = _make_state()
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await reply_create_config(msg, state, user)
+        with patch(
+            "bot.handlers.config.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ):
+            await reply_create_config(msg, state, user, session)
 
         msg.answer.assert_called_once()
         text = msg.answer.call_args[0][0]

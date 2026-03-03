@@ -8,12 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from aiogram.types import Chat, Message, User
 
-from bot.dto import UserDTO
+from bot.dto import PromoCodeDTO, UserDTO
 from bot.handlers.owner import (
     _MISSING,
     IsOwnerFilter,
     _extract_arg,
     cmd_admins,
+    cmd_promo,
     cmd_rm_admin,
     cmd_set_admin,
     router,
@@ -569,3 +570,177 @@ class TestEdgeCases:
         msg.answer.assert_called_once()
         text = msg.answer.call_args[0][0]
         assert "Использование: /rmadmin <telegram_id>" in text
+
+
+# ---------------------------------------------------------------------------
+# /promo commands
+# ---------------------------------------------------------------------------
+
+
+def _make_promo_dto(
+    code: str = "testpromo",
+    is_active: bool = True,
+    use_count: int = 0,
+) -> PromoCodeDTO:
+    return PromoCodeDTO(
+        id=1,
+        code=code,
+        is_active=is_active,
+        use_count=use_count,
+        created_at=NOW,
+    )
+
+
+class TestCmdPromo:
+    @pytest.mark.asyncio
+    async def test_no_subcommand_shows_usage(self) -> None:
+        msg = _make_message("/promo")
+        db_session = _make_db_session()
+
+        await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "create" in text
+        assert "list" in text
+        assert "disable" in text
+
+    @pytest.mark.asyncio
+    async def test_unknown_subcommand_shows_error(self) -> None:
+        msg = _make_message("/promo unknown")
+        db_session = _make_db_session()
+
+        await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "Неизвестная подкоманда" in text
+
+
+class TestPromoCreate:
+    @pytest.mark.asyncio
+    async def test_create_success(self) -> None:
+        msg = _make_message("/promo create MYCODE")
+        db_session = _make_db_session()
+        promo = _make_promo_dto(code="mycode")
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.get_by_code = AsyncMock(return_value=None)
+            mock_repo.create = AsyncMock(return_value=promo)
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "mycode" in text
+        assert "создан" in text.lower()
+
+    @pytest.mark.asyncio
+    async def test_create_missing_code(self) -> None:
+        msg = _make_message("/promo create")
+        db_session = _make_db_session()
+
+        await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "Использование" in text
+
+    @pytest.mark.asyncio
+    async def test_create_duplicate_code(self) -> None:
+        msg = _make_message("/promo create EXISTING")
+        db_session = _make_db_session()
+        promo = _make_promo_dto(code="existing")
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.get_by_code = AsyncMock(return_value=promo)
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "уже существует" in text.lower()
+
+
+class TestPromoList:
+    @pytest.mark.asyncio
+    async def test_list_empty(self) -> None:
+        msg = _make_message("/promo list")
+        db_session = _make_db_session()
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.list_all = AsyncMock(return_value=[])
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "нет" in text.lower()
+
+    @pytest.mark.asyncio
+    async def test_list_shows_all_with_stats(self) -> None:
+        msg = _make_message("/promo list")
+        db_session = _make_db_session()
+        promos = [
+            _make_promo_dto(code="code1", is_active=True, use_count=3),
+            _make_promo_dto(code="code2", is_active=False, use_count=0),
+        ]
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.list_all = AsyncMock(return_value=promos)
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "code1" in text
+        assert "активен" in text
+        assert "code2" in text
+        assert "деактивирован" in text
+
+
+class TestPromoDisable:
+    @pytest.mark.asyncio
+    async def test_disable_success(self) -> None:
+        msg = _make_message("/promo disable MYCODE")
+        db_session = _make_db_session()
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.deactivate = AsyncMock(return_value=True)
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "деактивирован" in text.lower()
+
+    @pytest.mark.asyncio
+    async def test_disable_not_found(self) -> None:
+        msg = _make_message("/promo disable UNKNOWN")
+        db_session = _make_db_session()
+
+        with patch("bot.handlers.owner.PromoCodeRepository") as mock_cls:
+            mock_repo = mock_cls.return_value
+            mock_repo.deactivate = AsyncMock(return_value=False)
+
+            await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "не найден" in text.lower()
+
+    @pytest.mark.asyncio
+    async def test_disable_missing_code(self) -> None:
+        msg = _make_message("/promo disable")
+        db_session = _make_db_session()
+
+        await cmd_promo(msg, db_session)
+
+        msg.answer.assert_called_once()
+        text = msg.answer.call_args[0][0]
+        assert "Использование" in text

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -108,8 +108,15 @@ class TestStartCreateConfig:
         cb = _make_callback("create_config")
         state = _make_state()
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await start_create_config(cb, state, user)
+        # Mock subscription check — user has an active subscription
+        with patch(
+            "bot.handlers.config.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ):
+            await start_create_config(cb, state, user, session)
 
         current = await state.get_state()
         assert current == ConfigCreateStates.waiting_for_name
@@ -121,13 +128,62 @@ class TestStartCreateConfig:
         cb.answer.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_no_subscription_shows_payment_menu(self) -> None:
+        """Non-admin without subscription sees payment menu instead of FSM."""
+        cb = _make_callback("create_config")
+        state = _make_state()
+        user = _make_user_dto()
+        session = AsyncMock()
+
+        with (
+            patch(
+                "bot.handlers.config.subscription_service.get_active",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "bot.handlers.payment.show_payment_menu",
+                new_callable=AsyncMock,
+            ) as mock_show_payment,
+        ):
+            await start_create_config(cb, state, user, session)
+
+        mock_show_payment.assert_called_once()
+        # FSM should NOT be set
+        current = await state.get_state()
+        assert current is None
+
+    @pytest.mark.asyncio
+    async def test_admin_skips_subscription_check(self) -> None:
+        """Admin users bypass subscription check entirely."""
+        cb = _make_callback("create_config")
+        state = _make_state()
+        user = UserDTO(
+            id=1, telegram_id=123456, username="admin", is_admin=True, created_at=NOW,
+        )
+        session = AsyncMock()
+
+        # No subscription mock needed — admin bypasses check
+        await start_create_config(cb, state, user, session)
+
+        current = await state.get_state()
+        assert current == ConfigCreateStates.waiting_for_name
+        cb.answer.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_reply_create_config_sets_fsm_and_sends_prompt(self) -> None:
         """reply_create_config (reply-keyboard entry) sets FSM and prompts for name."""
         msg = _make_message("Создать конфиг")
         state = _make_state()
         user = _make_user_dto()
+        session = AsyncMock()
 
-        await reply_create_config(msg, state, user)
+        with patch(
+            "bot.handlers.config.subscription_service.get_active",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ):
+            await reply_create_config(msg, state, user, session)
 
         current = await state.get_state()
         assert current == ConfigCreateStates.waiting_for_name
@@ -136,6 +192,47 @@ class TestStartCreateConfig:
         # Cancel button must be present
         kwargs = msg.answer.call_args[1]
         assert kwargs.get("reply_markup") is not None
+
+    @pytest.mark.asyncio
+    async def test_reply_create_config_no_subscription_shows_payment_menu(self) -> None:
+        """Non-admin without subscription via reply keyboard sees payment menu, not FSM."""
+        msg = _make_message("Создать конфиг")
+        state = _make_state()
+        user = _make_user_dto()
+        session = AsyncMock()
+
+        with (
+            patch(
+                "bot.handlers.config.subscription_service.get_active",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "bot.handlers.payment.show_payment_menu_message",
+                new_callable=AsyncMock,
+            ) as mock_show,
+        ):
+            await reply_create_config(msg, state, user, session)
+
+        mock_show.assert_called_once_with(msg)
+        current = await state.get_state()
+        assert current is None
+
+    @pytest.mark.asyncio
+    async def test_reply_create_config_admin_skips_subscription_check(self) -> None:
+        """Admin via reply keyboard bypasses subscription check."""
+        msg = _make_message("Создать конфиг")
+        state = _make_state()
+        user = UserDTO(
+            id=1, telegram_id=123456, username="admin", is_admin=True, created_at=NOW,
+        )
+        session = AsyncMock()
+
+        # No patch for subscription check — admin should bypass it entirely
+        await reply_create_config(msg, state, user, session)
+
+        current = await state.get_state()
+        assert current == ConfigCreateStates.waiting_for_name
 
 
 class TestProcessConfigName:
@@ -154,6 +251,7 @@ class TestProcessConfigName:
 
     @pytest.mark.asyncio
     async def test_valid_name_creates_config(self) -> None:
+        from bot.dto import SubscriptionDTO
         from bot.services.vpn_service import ConfigLinks
 
         msg = _make_message("my-config")
@@ -170,6 +268,10 @@ class TestProcessConfigName:
             vless_link="vless://test-link",
             subscription_url="http://localhost:2053/sub/uuid-123",
         )
+        mock_sub = SubscriptionDTO(
+            id=1, user_id=1, started_at=NOW, expires_at=NOW + timedelta(days=30),
+            source="stars", promo_code=None, created_at=NOW,
+        )
 
         with (
             patch("bot.handlers.config.ConfigRepository") as mock_repo_cls,
@@ -183,6 +285,11 @@ class TestProcessConfigName:
                 new_callable=AsyncMock,
                 return_value=mock_links,
             ) as mock_create,
+            patch(
+                "bot.handlers.config.subscription_service.get_active",
+                new_callable=AsyncMock,
+                return_value=mock_sub,
+            ),
         ):
             mock_repo = mock_repo_cls.return_value
             mock_repo.get_by_email = AsyncMock(return_value=None)
@@ -219,6 +326,11 @@ class TestProcessConfigName:
                 "bot.handlers.config._get_xui_client",
                 new_callable=AsyncMock,
                 side_effect=XUIError("login failed"),
+            ),
+            patch(
+                "bot.handlers.config.subscription_service.get_active",
+                new_callable=AsyncMock,
+                return_value=None,
             ),
         ):
             mock_repo = mock_repo_cls.return_value

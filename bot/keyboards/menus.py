@@ -96,3 +96,59 @@ def confirm_delete(config_id: int) -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+def payment_menu() -> InlineKeyboardMarkup:
+    """Payment method selection menu."""
+    from bot.config import settings
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"\u2b50 Оплатить Stars ({settings.SUBSCRIPTION_STARS})",
+                    callback_data="pay_stars",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="\U0001f39f У меня есть промокод",
+                    callback_data="enter_promo",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="\u2b05 Назад",
+                    callback_data="back_to_main",
+                ),
+            ],
+        ]
+    )
+
+
+def promo_cancel_menu() -> InlineKeyboardMarkup:
+    """Single cancel button shown during promo code input FSM state."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="\u2716 Отмена",
+                    callback_data="cancel_promo",
+                ),
+            ],
+        ]
+    )
+
+
+def renew_button() -> InlineKeyboardMarkup:
+    """Single 'Renew subscription' button used in expiry notifications."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="\U0001f504 Продлить подписку",
+                    callback_data="pay:menu",
+                ),
+            ],
+        ]
+    )

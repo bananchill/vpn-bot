@@ -15,6 +15,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
+from bot.db.repositories.promo_code_repo import PromoCodeRepository
 from bot.db.repositories.user_repo import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -161,3 +162,99 @@ async def cmd_admins(message: Message, db_session: AsyncSession) -> None:
             lines.append(f"  - ID: {admin.telegram_id}")
 
     await message.answer("\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# /promo create|list|disable
+# ---------------------------------------------------------------------------
+
+
+@router.message(Command("promo"))
+async def cmd_promo(message: Message, db_session: AsyncSession) -> None:
+    """Manage promo codes: create, list, or disable.
+
+    Usage:
+        /promo create <code>
+        /promo list
+        /promo disable <code>
+    """
+    raw_arg = _extract_arg(message.text)
+
+    if raw_arg is _MISSING:
+        await message.answer(
+            "Использование:\n"
+            "/promo create <code> — создать промокод\n"
+            "/promo list — список промокодов\n"
+            "/promo disable <code> — деактивировать промокод"
+        )
+        return
+
+    parts = str(raw_arg).split(maxsplit=1)
+    subcommand = parts[0].lower()
+    arg = parts[1].strip() if len(parts) > 1 else ""
+
+    if subcommand == "create":
+        await _promo_create(message, arg, db_session)
+    elif subcommand == "list":
+        await _promo_list(message, db_session)
+    elif subcommand == "disable":
+        await _promo_disable(message, arg, db_session)
+    else:
+        await message.answer(
+            f"Неизвестная подкоманда: {subcommand}\n"
+            "Доступные: create, list, disable"
+        )
+
+
+async def _promo_create(
+    message: Message, code: str, db_session: AsyncSession
+) -> None:
+    """Create a new promo code."""
+    if not code:
+        await message.answer("Использование: /promo create <code>")
+        return
+
+    repo = PromoCodeRepository(db_session)
+    existing = await repo.get_by_code(code)
+    if existing is not None:
+        await message.answer(f"Промокод «{code.lower()}» уже существует.")
+        return
+
+    promo = await repo.create(code)
+    await message.answer(f"Промокод «{promo.code}» создан.")
+    logger.info("Owner created promo code: %s", promo.code)
+
+
+async def _promo_list(message: Message, db_session: AsyncSession) -> None:
+    """List all promo codes with stats."""
+    repo = PromoCodeRepository(db_session)
+    promos = await repo.list_all()
+
+    if not promos:
+        await message.answer("Промокодов нет.")
+        return
+
+    lines: list[str] = ["Промокоды:"]
+    for p in promos:
+        status = "активен" if p.is_active else "деактивирован"
+        lines.append(f"  - {p.code} ({status}, использован: {p.use_count})")
+
+    await message.answer("\n".join(lines))
+
+
+async def _promo_disable(
+    message: Message, code: str, db_session: AsyncSession
+) -> None:
+    """Deactivate a promo code."""
+    if not code:
+        await message.answer("Использование: /promo disable <code>")
+        return
+
+    repo = PromoCodeRepository(db_session)
+    deactivated = await repo.deactivate(code)
+    if not deactivated:
+        await message.answer(f"Промокод «{code.lower()}» не найден.")
+        return
+
+    await message.answer(f"Промокод «{code.lower()}» деактивирован.")
+    logger.info("Owner disabled promo code: %s", code.lower())

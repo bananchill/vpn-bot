@@ -29,16 +29,25 @@ function toggle() {
     role="switch"
     :aria-checked="modelValue"
     :disabled="disabled"
-    class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none"
+    class="relative inline-flex shrink-0 cursor-pointer items-center rounded-[16px] transition-colors duration-200 focus:outline-none"
     :class="[
-      modelValue ? 'bg-[#34c759]' : 'bg-[#787880]/[0.32]',
       disabled ? 'opacity-50 cursor-not-allowed' : '',
     ]"
+    :style="{
+      width: '51px',
+      height: '31px',
+      backgroundColor: modelValue ? '#34c759' : '#e9e9eb',
+    }"
     @click="toggle"
   >
     <span
-      class="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200"
-      :class="modelValue ? 'translate-x-6' : 'translate-x-1'"
+      class="inline-block rounded-[14px] bg-white transition-transform duration-200"
+      :style="{
+        width: '27px',
+        height: '27px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        transform: modelValue ? 'translateX(22px)' : 'translateX(2px)',
+      }"
     />
   </button>
 </template>

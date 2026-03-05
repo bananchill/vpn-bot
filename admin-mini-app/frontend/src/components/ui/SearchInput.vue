@@ -47,30 +47,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative">
-    <!-- Search icon -->
-    <svg
-      class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tg-hint"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      stroke-width="2"
+  <div
+    class="flex items-center bg-white rounded-[12px] h-[41px] px-[14px] gap-[8px]"
+    style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
+  >
+    <!-- Search emoji icon -->
+    <span class="text-[16px] shrink-0 leading-none" style="color: #8e8e93;"
+      >&#x1F50D;</span
     >
-      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
 
     <input
       type="text"
       :value="localValue"
       :placeholder="placeholder"
-      class="input-field pl-9 pr-9 !bg-white rounded-xl shadow-soft"
+      class="flex-1 min-w-0 bg-transparent border-none outline-none text-[15px]"
+      style="color: #1a1a2e;"
       @input="onInput"
     />
 
     <!-- Clear button -->
     <button
       v-if="localValue"
-      class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-tg-hint active:text-tg-text transition-colors"
+      class="shrink-0 w-5 h-5 flex items-center justify-center rounded-full active:opacity-70 transition-opacity"
+      style="color: #8e8e93;"
       @click="clear"
     >
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -79,3 +78,10 @@ onUnmounted(() => {
     </button>
   </div>
 </template>
+
+<style scoped>
+input::placeholder {
+  color: #c7c7cc;
+  font-size: 15px;
+}
+</style>

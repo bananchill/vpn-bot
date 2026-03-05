@@ -15,10 +15,10 @@ const props = defineProps({
 const emit = defineEmits(['update:currentPage'])
 
 /**
- * Build a window of page numbers around the current page.
- * Shows at most 5 page buttons to avoid overflow on mobile.
+ * Build page items with ellipsis.
+ * Returns an array of numbers and '...' strings.
  */
-const pages = computed(() => {
+const pageItems = computed(() => {
   const total = props.totalPages
   const current = props.currentPage
 
@@ -26,14 +26,37 @@ const pages = computed(() => {
     return Array.from({ length: total }, (_, i) => i + 1)
   }
 
-  const start = Math.max(1, current - 2)
-  const end = Math.min(total, start + 4)
-  const adjustedStart = Math.max(1, end - 4)
+  const items = []
 
-  return Array.from({ length: end - adjustedStart + 1 }, (_, i) => adjustedStart + i)
+  // Always show first page
+  items.push(1)
+
+  if (current > 3) {
+    items.push('...')
+  }
+
+  // Pages around current
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+
+  for (let i = start; i <= end; i++) {
+    items.push(i)
+  }
+
+  if (current < total - 2) {
+    items.push('...')
+  }
+
+  // Always show last page
+  if (total > 1) {
+    items.push(total)
+  }
+
+  return items
 })
 
 function goTo(page) {
+  if (typeof page !== 'number') return
   if (page >= 1 && page <= props.totalPages && page !== props.currentPage) {
     emit('update:currentPage', page)
   }
@@ -41,42 +64,30 @@ function goTo(page) {
 </script>
 
 <template>
-  <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 py-3">
-    <!-- Previous -->
-    <button
-      class="w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors"
-      :class="currentPage === 1 ? 'text-tg-hint/40 cursor-not-allowed' : 'text-tg-text active:bg-tg-secondary-bg'"
-      :disabled="currentPage === 1"
-      @click="goTo(currentPage - 1)"
-    >
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-      </svg>
-    </button>
+  <div v-if="totalPages > 1" class="flex items-center justify-center gap-[4px] py-3">
+    <template v-for="(item, idx) in pageItems" :key="idx">
+      <!-- Ellipsis -->
+      <span
+        v-if="item === '...'"
+        class="w-[36px] h-[36px] flex items-center justify-center text-[14px] font-medium"
+        style="color: #8e8e93;"
+      >
+        ...
+      </span>
 
-    <!-- Page numbers -->
-    <button
-      v-for="page in pages"
-      :key="page"
-      class="w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors"
-      :class="page === currentPage
-        ? 'bg-blue-500 text-white'
-        : 'text-tg-text active:bg-tg-secondary-bg'"
-      @click="goTo(page)"
-    >
-      {{ page }}
-    </button>
-
-    <!-- Next -->
-    <button
-      class="w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors"
-      :class="currentPage === totalPages ? 'text-tg-hint/40 cursor-not-allowed' : 'text-tg-text active:bg-tg-secondary-bg'"
-      :disabled="currentPage === totalPages"
-      @click="goTo(currentPage + 1)"
-    >
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </button>
+      <!-- Page number button -->
+      <button
+        v-else
+        class="w-[36px] h-[36px] flex items-center justify-center rounded-[10px] text-[14px] font-medium transition-colors"
+        :style="{
+          backgroundColor: item === currentPage ? '#007aff' : '#ffffff',
+          color: item === currentPage ? '#ffffff' : '#8e8e93',
+          boxShadow: item !== currentPage ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
+        }"
+        @click="goTo(item)"
+      >
+        {{ item }}
+      </button>
+    </template>
   </div>
 </template>

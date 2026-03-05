@@ -15,27 +15,43 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  /** Size variant: 'sm' for list items, 'lg' for detail page */
+  size: {
+    type: String,
+    default: 'sm',
+  },
 })
 
 const config = computed(() => {
   const map = {
-    paid: { label: 'Оплачено', classes: 'bg-green-100 text-green-700' },
-    unpaid: { label: 'Не оплачено', classes: 'bg-red-100 text-red-700' },
-    expired: { label: 'Истекло', classes: 'bg-orange-100 text-orange-700' },
-    expiring: { label: 'Истекает', classes: 'bg-orange-100 text-orange-700' },
-    active: { label: 'Активен', classes: 'bg-blue-100 text-blue-700' },
-    inactive: { label: 'Неактивен', classes: 'bg-gray-100 text-gray-500' },
+    paid: { label: 'Оплачено', bg: '#e8f5e9', text: '#2e7d32' },
+    unpaid: { label: 'Не оплачено', bg: '#fce4ec', text: '#c62828' },
+    expired: { label: 'Истекло', bg: '#fce4ec', text: '#c62828' },
+    expiring: { label: 'Истекает', bg: '#fff3e0', text: '#e65100' },
+    active: { label: 'Активен', bg: '#e3f2fd', text: '#1565c0' },
+    inactive: { label: 'Неактивен', bg: '#fce4ec', text: '#c62828' },
   }
-  return map[props.status] || { label: props.status, classes: 'bg-gray-100 text-gray-500' }
+  return map[props.status] || { label: props.status, bg: '#f5f5f7', text: '#8e8e93' }
 })
 
 const displayLabel = computed(() => props.label || config.value.label)
+
+const sizeClasses = computed(() => {
+  if (props.size === 'lg') {
+    return 'rounded-[8px] px-[12px] py-[4px] text-[12px]'
+  }
+  return 'rounded-[6px] px-[8px] py-[2px] text-[11px]'
+})
 </script>
 
 <template>
   <span
-    class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
-    :class="config.classes"
+    class="inline-flex items-center font-semibold whitespace-nowrap"
+    :class="sizeClasses"
+    :style="{
+      backgroundColor: config.bg,
+      color: config.text,
+    }"
   >
     {{ displayLabel }}
   </span>

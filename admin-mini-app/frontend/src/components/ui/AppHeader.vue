@@ -8,7 +8,7 @@ const router = useRouter()
 const pageTitle = computed(() => route.meta?.title || 'Админ-панель')
 
 /** Show back button on sub-pages (non-root routes) */
-const showBack = computed(() => route.path !== '/')
+const showBack = computed(() => route.path !== '/' && route.path !== '/users')
 
 function goBack() {
   router.back()
@@ -16,21 +16,26 @@ function goBack() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-30 backdrop-blur-xl bg-tg-secondary-bg/85 border-b border-black/[0.08]">
-    <div class="relative flex items-center justify-center h-12 px-4">
+  <header
+    class="sticky top-0 z-30 border-b border-black/[0.08]"
+    style="background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);"
+  >
+    <div
+      class="relative flex items-center justify-center px-4"
+      :class="showBack ? 'h-[58px]' : 'h-[49px]'"
+    >
       <!-- Back button -->
       <button
         v-if="showBack"
-        class="absolute left-2 flex items-center gap-0.5 text-tg-link text-sm font-medium active:opacity-70 transition-opacity"
+        class="absolute left-2 flex items-center gap-0.5 text-[24px] leading-none active:opacity-70 transition-opacity"
+        style="color: #007aff;"
         @click="goBack"
       >
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
+        <span class="font-light">&lsaquo;</span>
       </button>
 
       <!-- Title -->
-      <h1 class="text-base font-semibold text-tg-text truncate">
+      <h1 class="text-[17px] font-semibold truncate" style="color: #1a1a2e;">
         {{ pageTitle }}
       </h1>
     </div>

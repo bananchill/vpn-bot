@@ -21,8 +21,23 @@ export default {
           'button-text': 'var(--tg-theme-button-text-color)',
           'secondary-bg': 'var(--tg-theme-secondary-bg-color)',
         },
-        ios: {
-          green: '#34c759',
+        app: {
+          accent: '#007aff',
+          'text-primary': '#1a1a2e',
+          'text-secondary': '#8e8e93',
+          'surface-tertiary': '#f5f5f7',
+          'success-bg': '#e8f5e9',
+          'success-text': '#2e7d32',
+          'success-icon': '#4caf50',
+          'error-bg': '#fce4ec',
+          'error-text': '#c62828',
+          'warning-bg': '#fff3e0',
+          'warning-text': '#e65100',
+          'info-bg': '#e3f2fd',
+          'info-text': '#1565c0',
+          'purple-bg': '#f3e5f5',
+          'toggle-on': '#34c759',
+          'toggle-off': '#e9e9eb',
         },
       },
       borderRadius: {
@@ -30,10 +45,11 @@ export default {
         'card': '16px',
         'btn': '14px',
         'avatar-sm': '14px',
-        'avatar-lg': '20px',
+        'avatar-lg': '22px',
       },
       boxShadow: {
         'soft': '0 1px 3px rgba(0,0,0,0.04)',
+        'chip': '0 1px 2px rgba(0,0,0,0.04)',
       },
       /* Ensure content area does not hide behind fixed navbar */
       spacing: {

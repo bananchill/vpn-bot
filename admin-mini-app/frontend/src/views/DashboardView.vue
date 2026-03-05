@@ -42,58 +42,65 @@ const statCards = computed(() => [
     label: 'Пользователей',
     value: formatNumber(dashboardStore.stats.total_users),
     emoji: '\uD83D\uDC65',
-    bg: 'bg-blue-50',
+    bg: '#e3f2fd',
   },
   {
-    label: 'Оплачено',
+    label: 'Доход за месяц',
     value: formatNumber(dashboardStore.stats.paid_users),
     emoji: '\uD83D\uDCB0',
-    bg: 'bg-green-50',
+    bg: '#f3e5f5',
   },
   {
     label: 'Истекают скоро',
     value: formatNumber(dashboardStore.stats.expiring_soon),
     emoji: '\u231B',
-    bg: 'bg-orange-50',
+    bg: '#fff3e0',
   },
   {
     label: 'Активных конфигов',
     value: formatNumber(dashboardStore.stats.active_configs),
     emoji: '\uD83D\uDD11',
-    bg: 'bg-purple-50',
+    bg: '#e8f5e9',
   },
 ])
 
 const quickActions = [
   {
     title: 'Пользователи',
-    description: 'Управление аккаунтами',
+    description: 'Управление',
     path: '/users',
-    bg: 'bg-green-500',
+    gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
     emoji: '\uD83D\uDC65',
   },
   {
     title: 'Настройки',
-    description: 'Конфигурация панели',
+    description: 'Конфигурация',
     path: '/settings',
-    bg: 'bg-orange-400',
+    gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
     emoji: '\u2699\uFE0F',
   },
   {
     title: 'Промокоды',
-    description: 'Скидки и акции',
+    description: 'Скидки',
     path: '/promos',
-    bg: 'bg-blue-500',
+    gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
     emoji: '\uD83C\uDFF7\uFE0F',
   },
   {
     title: 'Логи',
-    description: 'Журнал действий',
+    description: 'Журнал',
     path: '/logs',
-    bg: 'bg-green-400',
+    gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)',
     emoji: '\uD83D\uDCCB',
   },
 ]
+
+/** Event icon backgrounds */
+const eventIconBg = {
+  '\u2705': '#e8f5e9',
+  '\uD83D\uDD04': '#e3f2fd',
+  '\u26A0\uFE0F': '#fff3e0',
+}
 
 onMounted(async () => {
   try {
@@ -116,7 +123,7 @@ function navigateTo(path) {
 </script>
 
 <template>
-  <div class="px-4 py-5 space-y-5">
+  <div class="px-4 py-5 space-y-5" style="background: #f5f5f7; min-height: 100vh;">
     <!-- Loading state -->
     <LoadingSpinner
       v-if="settingsStore.loading"
@@ -144,10 +151,10 @@ function navigateTo(path) {
     >
       <p class="text-4xl">&#x1F44B;</p>
       <div class="space-y-1">
-        <p class="text-lg font-semibold text-tg-text">
+        <p class="text-lg font-semibold" style="color: #1a1a2e;">
           Добро пожаловать!
         </p>
-        <p class="text-sm text-tg-hint">
+        <p class="text-sm" style="color: #8e8e93;">
           Настройте подключение к панели, чтобы начать работу.
         </p>
       </div>
@@ -163,24 +170,32 @@ function navigateTo(path) {
     <template v-else>
       <!-- Greeting section -->
       <div>
-        <p class="text-2xl font-bold text-tg-text">
+        <p class="text-[26px] font-bold" style="color: #1a1a2e;">
           Привет, {{ greeting }}!
         </p>
-        <p class="text-sm text-tg-hint mt-0.5">
-          Вот что происходит с вашим VPN-сервисом
+        <p class="text-[14px] mt-0.5" style="color: #8e8e93;">
+          Вот что происходит с вашим VPN
         </p>
       </div>
 
       <!-- Connection badge -->
       <div
         v-if="settingsStore.connectionStatus.checked || settingsStore.connectionStatus.checking"
-        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-soft text-xs font-medium"
+        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-[20px] text-[13px] font-medium"
+        :style="{
+          backgroundColor: isConnected ? '#e8f5e9' : settingsStore.connectionStatus.checking ? '#e3f2fd' : '#fce4ec',
+          color: isConnected ? '#2e7d32' : settingsStore.connectionStatus.checking ? '#1565c0' : '#c62828',
+        }"
       >
         <span
-          class="w-2 h-2 rounded-full"
-          :class="isConnected ? 'bg-[#34c759]' : settingsStore.connectionStatus.checking ? 'bg-tg-button animate-pulse' : 'bg-red-500'"
+          class="w-2 h-2 rounded-[4px]"
+          :style="{
+            backgroundColor: isConnected ? '#4caf50' : settingsStore.connectionStatus.checking ? '#007aff' : '#c62828',
+            opacity: isConnected ? 0.42 : 1,
+          }"
+          :class="settingsStore.connectionStatus.checking ? 'animate-pulse' : ''"
         />
-        <span class="text-tg-text">{{ connectionLabel }}</span>
+        <span>{{ connectionLabel }}</span>
       </div>
 
       <!-- Dashboard error -->
@@ -194,50 +209,50 @@ function navigateTo(path) {
       </div>
 
       <!-- Stats grid 2x2 -->
-      <div v-if="!dashboardStore.error" class="grid grid-cols-2 gap-3">
+      <div v-if="!dashboardStore.error" class="grid grid-cols-2 gap-[12px]">
         <div
           v-for="stat in statCards"
           :key="stat.label"
-          class="card flex items-start gap-3"
+          class="bg-white rounded-[16px] p-[16px]"
+          style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
         >
           <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg"
-            :class="[stat.bg]"
+            class="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center text-[18px]"
+            :style="{ backgroundColor: stat.bg }"
           >
             {{ stat.emoji }}
           </div>
-          <div class="min-w-0">
-            <p class="text-xl font-bold text-tg-text leading-tight">
-              {{ dashboardStore.loading ? '-' : stat.value }}
-            </p>
-            <p class="text-[11px] text-tg-hint mt-0.5 leading-tight">
-              {{ stat.label }}
-            </p>
-          </div>
+          <p class="text-[24px] font-bold leading-tight mt-2.5" style="color: #1a1a2e;">
+            {{ dashboardStore.loading ? '-' : stat.value }}
+          </p>
+          <p class="text-[13px] mt-0.5" style="color: #8e8e93;">
+            {{ stat.label }}
+          </p>
         </div>
       </div>
 
       <!-- Quick actions 2x2 -->
       <div>
-        <p class="text-[11px] font-semibold text-tg-hint uppercase tracking-wider mb-2">
+        <p class="text-[18px] font-semibold mb-3" style="color: #1a1a2e;">
           Быстрые действия
         </p>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-[12px]">
           <button
             v-for="action in quickActions"
             :key="action.path"
-            class="card flex flex-col gap-3 text-left active:opacity-80 transition-opacity"
+            class="bg-white rounded-[16px] p-[16px] flex flex-col gap-3 text-left active:opacity-80 transition-opacity"
+            style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
             @click="navigateTo(action.path)"
           >
             <div
-              class="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-              :class="action.bg"
+              class="w-[40px] h-[40px] rounded-[12px] flex items-center justify-center text-[18px]"
+              :style="{ background: action.gradient }"
             >
-              {{ action.emoji }}
+              <span class="brightness-0 invert">{{ action.emoji }}</span>
             </div>
             <div>
-              <p class="text-sm font-semibold text-tg-text">{{ action.title }}</p>
-              <p class="text-[11px] text-tg-hint mt-0.5">{{ action.description }}</p>
+              <p class="text-[15px] font-semibold" style="color: #1a1a2e;">{{ action.title }}</p>
+              <p class="text-[12px] mt-0.5" style="color: #8e8e93;">{{ action.description }}</p>
             </div>
           </button>
         </div>
@@ -245,19 +260,28 @@ function navigateTo(path) {
 
       <!-- Recent events -->
       <div v-if="dashboardStore.recentEvents.length">
-        <p class="text-[11px] font-semibold text-tg-hint uppercase tracking-wider mb-2">
+        <p class="text-[18px] font-semibold mb-3" style="color: #1a1a2e;">
           Последние события
         </p>
-        <div class="card divide-y divide-black/[0.06]">
+        <div
+          class="bg-white rounded-[16px] overflow-hidden"
+          style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
+        >
           <div
             v-for="(event, idx) in dashboardStore.recentEvents"
             :key="idx"
             class="flex items-center gap-3 px-4 py-3"
+            :class="idx < dashboardStore.recentEvents.length - 1 ? 'border-b border-black/[0.06]' : ''"
           >
-            <span class="text-lg shrink-0">{{ event.emoji }}</span>
+            <div
+              class="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center text-[16px] shrink-0"
+              :style="{ backgroundColor: eventIconBg[event.emoji] || '#f5f5f7' }"
+            >
+              {{ event.emoji }}
+            </div>
             <div class="min-w-0 flex-1">
-              <p class="text-sm text-tg-text truncate">{{ event.title }}</p>
-              <p class="text-[11px] text-tg-hint">{{ event.time_ago }}</p>
+              <p class="text-[14px] font-medium truncate" style="color: #1a1a2e;">{{ event.title }}</p>
+              <p class="text-[12px]" style="color: #8e8e93;">{{ event.time_ago }}</p>
             </div>
           </div>
         </div>

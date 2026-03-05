@@ -146,14 +146,15 @@ async function handleToggleAll({ enabled, resolve, reject }) {
       <UserInfo :user="store.currentUser" />
 
       <!-- Admin note -->
-      <div class="card">
+      <div>
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-sm font-semibold text-tg-text">
+          <h3 class="text-[16px] font-semibold" style="color: #1a1a2e;">
             Заметка администратора
           </h3>
           <button
             v-if="!editingNote"
-            class="text-xs font-medium text-tg-link"
+            class="text-[13px] font-medium active:opacity-70 transition-opacity"
+            style="color: #007aff;"
             @click="startEditNote"
           >
             Изменить
@@ -161,18 +162,22 @@ async function handleToggleAll({ enabled, resolve, reject }) {
         </div>
 
         <!-- Display mode -->
-        <p
+        <div
           v-if="!editingNote"
-          class="text-sm text-tg-hint"
+          class="bg-white rounded-[16px] px-4 py-3"
+          style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
         >
-          {{ store.currentUser.admin_note || 'Нет заметки' }}
-        </p>
+          <p class="text-[14px] leading-[21px]" style="color: #3c3c43;">
+            {{ store.currentUser.admin_note || 'Нет заметки' }}
+          </p>
+        </div>
 
         <!-- Edit mode -->
         <div v-else class="space-y-3">
           <textarea
             v-model="noteInput"
-            class="input-field min-h-[80px] resize-none"
+            class="w-full bg-white rounded-[16px] px-4 py-3 text-[14px] leading-[21px] min-h-[80px] resize-none border-none outline-none"
+            style="color: #3c3c43; box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
             placeholder="Введите заметку..."
           />
           <div class="flex gap-2">
@@ -201,18 +206,23 @@ async function handleToggleAll({ enabled, resolve, reject }) {
         @toggle-all="handleToggleAll"
       />
 
-      <!-- Action buttons: Продлить (primary) then Заблокировать (soft danger) -->
+      <!-- Action buttons -->
       <div class="space-y-2 pt-2">
         <button
           v-if="!store.currentUser.is_blocked"
-          class="btn-primary"
+          class="w-full rounded-[14px] h-[47px] text-[15px] font-semibold text-white active:opacity-80 transition-opacity flex items-center justify-center"
+          style="background-color: #007aff;"
           @click="requestExtend"
         >
           Продлить подписку
         </button>
 
         <button
-          :class="store.currentUser.is_blocked ? 'btn-primary' : 'btn-danger'"
+          class="w-full rounded-[14px] h-[47px] text-[15px] font-semibold active:opacity-80 transition-opacity flex items-center justify-center"
+          :style="{
+            backgroundColor: store.currentUser.is_blocked ? '#007aff' : '#fce4ec',
+            color: store.currentUser.is_blocked ? '#ffffff' : '#c62828',
+          }"
           @click="requestBlock"
         >
           {{ store.currentUser.is_blocked ? 'Разблокировать' : 'Заблокировать' }}
@@ -251,12 +261,12 @@ async function handleToggleAll({ enabled, resolve, reject }) {
           />
 
           <!-- Modal panel -->
-          <div class="relative w-full max-w-sm mx-4 mb-6 bg-white rounded-2xl overflow-hidden shadow-xl">
+          <div class="relative w-full max-w-sm mx-4 mb-6 bg-white rounded-[20px] overflow-hidden" style="box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
             <div class="px-5 pt-5 pb-4">
-              <h3 class="text-base font-semibold text-tg-text">
+              <h3 class="text-[17px] font-semibold" style="color: #1a1a2e;">
                 Продлить подписку
               </h3>
-              <p class="mt-2 text-sm text-tg-hint">
+              <p class="mt-2 text-[14px]" style="color: #8e8e93;">
                 Укажите количество дней для продления.
               </p>
               <input
@@ -264,7 +274,8 @@ async function handleToggleAll({ enabled, resolve, reject }) {
                 type="number"
                 min="1"
                 max="365"
-                class="input-field mt-3"
+                class="w-full mt-3 bg-white rounded-[12px] px-4 py-3 text-[15px] border border-black/[0.06] outline-none"
+                style="color: #1a1a2e;"
                 placeholder="Количество дней"
               >
             </div>
@@ -277,7 +288,8 @@ async function handleToggleAll({ enabled, resolve, reject }) {
                 Отмена
               </button>
               <button
-                class="btn-primary flex-1"
+                class="flex-1 rounded-[14px] py-3 text-[15px] font-semibold text-white active:opacity-80 transition-opacity disabled:opacity-50"
+                style="background-color: #007aff;"
                 :disabled="extendLoading || extendDays < 1"
                 @click="confirmExtend"
               >

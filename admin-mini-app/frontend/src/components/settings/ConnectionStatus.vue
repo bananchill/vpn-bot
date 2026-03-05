@@ -29,53 +29,44 @@ defineProps({
 </script>
 
 <template>
-  <div class="flex items-center gap-3 py-2">
-    <!-- Status indicator dot -->
-    <span
-      v-if="checking"
-      class="relative flex h-3 w-3 shrink-0"
+  <div class="flex items-center gap-[12px]">
+    <!-- Status icon -->
+    <div
+      class="w-[44px] h-[44px] rounded-[14px] flex items-center justify-center shrink-0 text-[22px]"
+      :style="{
+        backgroundColor: checking ? '#fff3e0' : checked && success ? '#e8f5e9' : checked && !success ? '#fce4ec' : '#f5f5f7',
+      }"
     >
-      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tg-button opacity-75" />
-      <span class="relative inline-flex rounded-full h-3 w-3 bg-tg-button" />
-    </span>
-
-    <span
-      v-else-if="checked && success"
-      class="inline-flex h-3 w-3 shrink-0 rounded-full bg-[#34c759]"
-    />
-
-    <span
-      v-else-if="checked && !success"
-      class="inline-flex h-3 w-3 shrink-0 rounded-full bg-red-500"
-    />
-
-    <span
-      v-else
-      class="inline-flex h-3 w-3 shrink-0 rounded-full bg-gray-400"
-    />
+      <span v-if="checking" class="animate-pulse">&#x23F3;</span>
+      <span v-else-if="checked && success">&#x2705;</span>
+      <span v-else-if="checked && !success">&#x274C;</span>
+      <span v-else>&#x2753;</span>
+    </div>
 
     <!-- Status text -->
     <div class="flex flex-col min-w-0">
       <span
         v-if="checking"
-        class="text-sm text-tg-hint"
+        class="text-[15px] font-semibold"
+        style="color: #8e8e93;"
       >
-        Проверка подключения...
+        Проверка...
       </span>
 
       <template v-else-if="checked">
         <span
-          class="text-sm font-medium"
-          :class="success ? 'text-[#34c759]' : 'text-red-500'"
+          class="text-[15px] font-semibold"
+          :style="{ color: success ? '#2e7d32' : '#c62828' }"
         >
-          {{ success ? 'Подключено' : 'Ошибка' }}
-          <span v-if="success && responseTimeMs != null" class="font-normal text-tg-hint">
-            &middot; {{ responseTimeMs }}ms
-          </span>
+          {{ success ? 'Панель подключена' : 'Ошибка подключения' }}
+        </span>
+        <span v-if="success && responseTimeMs != null" class="text-[13px]" style="color: #8e8e93;">
+          Время отклика: {{ responseTimeMs }}ms
         </span>
         <span
           v-if="message && !success"
-          class="text-xs text-tg-hint truncate"
+          class="text-[13px] truncate"
+          style="color: #8e8e93;"
         >
           {{ message }}
         </span>
@@ -83,7 +74,8 @@ defineProps({
 
       <span
         v-else
-        class="text-sm text-tg-hint"
+        class="text-[15px]"
+        style="color: #8e8e93;"
       >
         Не проверено
       </span>

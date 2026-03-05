@@ -20,7 +20,7 @@ const emit = defineEmits(['toggle', 'toggle-all'])
 const pendingIds = ref(new Set())
 
 /**
- * Local enabled state per config (not from DB — managed client-side).
+ * Local enabled state per config (not from DB -- managed client-side).
  * Starts as all-enabled; toggling flips locally + calls panel via parent.
  */
 const enabledMap = ref({})
@@ -103,15 +103,16 @@ async function handleToggleAll() {
 </script>
 
 <template>
-  <div class="card">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-sm font-semibold text-tg-text">
+  <div>
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-[16px] font-semibold" style="color: #1a1a2e;">
         VPN-конфигурации
       </h3>
       <!-- Bulk toggle button -->
       <button
         v-if="configs.length > 0"
-        class="text-xs font-medium text-tg-link active:opacity-70 transition-opacity"
+        class="text-[13px] font-medium active:opacity-70 transition-opacity"
+        style="color: #007aff;"
         :disabled="disabled || bulkPending"
         @click="handleToggleAll"
       >
@@ -122,15 +123,17 @@ async function handleToggleAll() {
     <!-- Empty state -->
     <p
       v-if="configs.length === 0"
-      class="text-sm text-tg-hint text-center py-4"
+      class="text-[14px] text-center py-4"
+      style="color: #8e8e93;"
     >
       Нет конфигов
     </p>
 
-    <!-- Config rows — iOS grouped style -->
+    <!-- Config rows -- iOS grouped style -->
     <div
       v-else
-      class="bg-tg-secondary-bg rounded-xl overflow-hidden"
+      class="bg-white rounded-[16px] overflow-hidden"
+      style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
     >
       <div
         v-for="(config, index) in configs"
@@ -139,10 +142,10 @@ async function handleToggleAll() {
         :class="index < configs.length - 1 ? 'border-b border-black/[0.06]' : ''"
       >
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-tg-text truncate">
+          <p class="text-[14px] font-medium truncate" style="color: #1a1a2e;">
             {{ config.email }}
           </p>
-          <p class="text-xs text-tg-hint mt-0.5">
+          <p class="text-[12px] mt-0.5" style="color: #8e8e93;">
             {{ config.protocol.toUpperCase() }}
           </p>
         </div>

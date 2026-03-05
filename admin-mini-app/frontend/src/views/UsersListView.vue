@@ -46,12 +46,12 @@ const filterPresets = [
       <button
         v-for="preset in filterPresets"
         :key="preset.key"
-        class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors"
-        :class="
-          store.activeFilterLabel === preset.key
-            ? 'bg-tg-button text-white shadow-sm'
-            : 'bg-white text-gray-500 shadow-soft'
-        "
+        class="shrink-0 rounded-[20px] h-[29px] px-[14px] py-[7px] text-[13px] font-medium transition-colors flex items-center"
+        :style="{
+          backgroundColor: store.activeFilterLabel === preset.key ? '#007aff' : '#ffffff',
+          color: store.activeFilterLabel === preset.key ? '#ffffff' : '#8e8e93',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }"
         @click="store.setFilter(preset.key)"
       >
         {{ preset.label }}
@@ -61,9 +61,10 @@ const filterPresets = [
     <!-- Count text below filters -->
     <p
       v-if="!store.loading && store.users.length > 0"
-      class="text-xs text-tg-hint"
+      class="text-[13px]"
+      style="color: #8e8e93;"
     >
-      Найдено: {{ store.total }}
+      Найдено: {{ store.total.toLocaleString() }} пользователей
     </p>
 
     <!-- Loading -->
@@ -101,7 +102,7 @@ const filterPresets = [
 
     <!-- Users list -->
     <template v-else>
-      <div class="space-y-2">
+      <div class="flex flex-col gap-[10px]">
         <UserCard
           v-for="user in store.users"
           :key="user.id"
@@ -115,11 +116,6 @@ const filterPresets = [
         :total-pages="store.pages"
         @update:current-page="handlePageChange"
       />
-
-      <!-- Total count -->
-      <p class="text-xs text-tg-hint text-center">
-        Всего: {{ store.total }}
-      </p>
     </template>
   </div>
 </template>

@@ -9,17 +9,17 @@ const props = defineProps({
   },
 })
 
-/** Gradient backgrounds for fallback avatars */
+/** CSS gradient backgrounds for fallback avatars */
 const gradients = [
-  'from-indigo-500 to-purple-600',
-  'from-blue-400 to-cyan-300',
-  'from-pink-400 to-rose-500',
-  'from-emerald-400 to-teal-300',
-  'from-pink-500 to-yellow-300',
+  'linear-gradient(135deg, #667eea, #764ba2)',
+  'linear-gradient(135deg, #4facfe, #00f2fe)',
+  'linear-gradient(135deg, #f093fb, #f5576c)',
+  'linear-gradient(135deg, #43e97b, #38f9d7)',
+  'linear-gradient(135deg, #fa709a, #fee140)',
 ]
 
 /** Compute a stable gradient index based on user id */
-const gradientClass = computed(() => {
+const gradientStyle = computed(() => {
   const id = props.user.id || props.user.telegram_id || 0
   const index = Math.abs(id) % gradients.length
   return gradients[index]
@@ -57,13 +57,16 @@ const daysSubscribed = computed(() =>
 </script>
 
 <template>
-  <div class="card">
+  <div
+    class="bg-white rounded-[20px] overflow-hidden"
+    style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
+  >
     <!-- Centered profile section -->
-    <div class="flex flex-col items-center text-center">
+    <div class="flex flex-col items-center text-center px-4 pt-5 pb-0">
       <!-- Large avatar -->
       <div
         v-if="user.photo_url"
-        class="w-16 h-16 rounded-full bg-tg-hint/20 overflow-hidden shrink-0"
+        class="w-[72px] h-[72px] rounded-[22px] overflow-hidden shrink-0"
       >
         <img
           :src="user.photo_url"
@@ -73,16 +76,16 @@ const daysSubscribed = computed(() =>
       </div>
       <div
         v-else
-        class="w-16 h-16 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0"
-        :class="gradientClass"
+        class="w-[72px] h-[72px] rounded-[22px] flex items-center justify-center shrink-0"
+        :style="{ background: gradientStyle }"
       >
-        <span class="text-xl font-bold text-white">
+        <span class="text-[28px] font-bold text-white">
           {{ initials }}
         </span>
       </div>
 
       <!-- Name -->
-      <p class="mt-3 text-base font-semibold text-tg-text">
+      <p class="mt-3 text-[20px] font-bold" style="color: #1a1a2e;">
         {{ [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Без имени' }}
       </p>
 
@@ -90,43 +93,46 @@ const daysSubscribed = computed(() =>
       <a
         v-if="user.username"
         :href="telegramLink"
-        class="text-sm text-tg-link mt-0.5"
+        class="text-[14px] mt-0.5"
+        style="color: #007aff;"
       >
         @{{ user.username }}
       </a>
 
       <!-- Badges row -->
       <div class="flex items-center gap-2 mt-2">
-        <StatusBadge :status="paymentStatus" />
+        <StatusBadge :status="paymentStatus" size="lg" />
         <StatusBadge
           v-if="!user.is_blocked"
           status="active"
           label="Активен"
+          size="lg"
         />
         <StatusBadge
           v-if="user.is_blocked"
           status="inactive"
           label="Заблокирован"
+          size="lg"
         />
       </div>
     </div>
 
-    <!-- Stats row: "124 Дней подписки | 3 Конфигов | 15.04 Истекает" -->
-    <div class="mt-4 pt-4 border-t border-black/[0.06] flex items-center justify-center gap-2 text-sm text-tg-text">
-      <span>
-        <span class="font-semibold">{{ daysSubscribed }}</span>
-        <span class="text-tg-hint ml-0.5">Дней подписки</span>
-      </span>
-      <span class="text-tg-hint">|</span>
-      <span>
-        <span class="font-semibold">{{ configsCount }}</span>
-        <span class="text-tg-hint ml-0.5">Конфигов</span>
-      </span>
-      <span class="text-tg-hint">|</span>
-      <span>
-        <span class="font-semibold">{{ expiryLabel }}</span>
-        <span class="text-tg-hint ml-0.5">Истекает</span>
-      </span>
+    <!-- Stats row -->
+    <div
+      class="flex items-center justify-between pt-[17px] pb-4 px-[18px] mt-4 border-t border-black/[0.06]"
+    >
+      <div class="flex flex-col items-center flex-1">
+        <span class="text-[18px] font-bold" style="color: #1a1a2e;">{{ daysSubscribed }}</span>
+        <span class="text-[11px]" style="color: #8e8e93;">Дней подписки</span>
+      </div>
+      <div class="flex flex-col items-center flex-1">
+        <span class="text-[18px] font-bold" style="color: #1a1a2e;">{{ configsCount }}</span>
+        <span class="text-[11px]" style="color: #8e8e93;">Конфигов</span>
+      </div>
+      <div class="flex flex-col items-center flex-1">
+        <span class="text-[18px] font-bold" style="color: #1a1a2e;">{{ expiryLabel }}</span>
+        <span class="text-[11px]" style="color: #8e8e93;">Истекает</span>
+      </div>
     </div>
   </div>
 </template>

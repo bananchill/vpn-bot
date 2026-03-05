@@ -13,17 +13,17 @@ const props = defineProps({
 
 const router = useRouter()
 
-/** Gradient backgrounds for fallback avatars */
+/** CSS gradient backgrounds for fallback avatars */
 const gradients = [
-  'from-indigo-500 to-purple-600',
-  'from-blue-400 to-cyan-300',
-  'from-pink-400 to-rose-500',
-  'from-emerald-400 to-teal-300',
-  'from-pink-500 to-yellow-300',
+  'linear-gradient(135deg, #667eea, #764ba2)',
+  'linear-gradient(135deg, #4facfe, #00f2fe)',
+  'linear-gradient(135deg, #f093fb, #f5576c)',
+  'linear-gradient(135deg, #43e97b, #38f9d7)',
+  'linear-gradient(135deg, #fa709a, #fee140)',
 ]
 
 /** Compute a stable gradient index based on user id */
-const gradientClass = computed(() => {
+const gradientStyle = computed(() => {
   const id = props.user.id || props.user.telegram_id || 0
   const index = Math.abs(id) % gradients.length
   return gradients[index]
@@ -35,15 +35,18 @@ const initials = computed(() => {
   return name.charAt(0).toUpperCase() || '?'
 })
 
-/** Human-readable expiry date or a dash when not set */
+/** Human-readable expiry date or null when not set */
 const expiryLabel = computed(() => {
   if (!props.user.subscription_expires) return null
   const d = new Date(props.user.subscription_expires)
-  return d.toLocaleDateString('ru-RU', {
+  const now = new Date()
+  const isExpired = d < now
+  const dateStr = d.toLocaleDateString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   })
+  return isExpired ? `истёк ${dateStr}` : `до ${dateStr}`
 })
 
 const paymentStatus = computed(() =>
@@ -58,13 +61,14 @@ function navigateToDetail() {
 
 <template>
   <button
-    class="card w-full text-left flex items-center gap-3 active:opacity-80 transition-opacity"
+    class="w-full bg-white rounded-[16px] h-[72px] flex items-center gap-[12px] px-[16px] text-left active:opacity-80 transition-opacity"
+    style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
     @click="navigateToDetail"
   >
     <!-- Avatar -->
     <div
       v-if="user.photo_url"
-      class="w-11 h-11 rounded-full bg-tg-hint/20 overflow-hidden shrink-0"
+      class="w-[44px] h-[44px] rounded-[14px] overflow-hidden shrink-0"
     >
       <img
         :src="user.photo_url"
@@ -74,10 +78,10 @@ function navigateToDetail() {
     </div>
     <div
       v-else
-      class="w-11 h-11 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0"
-      :class="gradientClass"
+      class="w-[44px] h-[44px] rounded-[14px] flex items-center justify-center shrink-0"
+      :style="{ background: gradientStyle }"
     >
-      <span class="text-sm font-semibold text-white">
+      <span class="text-[18px] font-semibold text-white">
         {{ initials }}
       </span>
     </div>
@@ -85,36 +89,35 @@ function navigateToDetail() {
     <!-- Info -->
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-tg-text truncate">
+        <span class="text-[15px] font-semibold truncate" style="color: #1a1a2e;">
           {{ user.first_name || 'Без имени' }}
         </span>
-        <StatusBadge :status="paymentStatus" />
+        <StatusBadge :status="paymentStatus" size="sm" />
       </div>
-      <div class="flex items-center gap-2 mt-0.5">
+      <div class="flex items-center gap-1 mt-0.5">
         <span
           v-if="user.username"
-          class="text-xs text-tg-hint truncate"
+          class="text-[13px] truncate"
+          style="color: #8e8e93;"
         >
           @{{ user.username }}
         </span>
         <span
+          v-if="user.username && expiryLabel"
+          class="text-[13px]"
+          style="color: #8e8e93;"
+        >&middot;</span>
+        <span
           v-if="expiryLabel"
-          class="text-xs text-tg-hint"
+          class="text-[13px] whitespace-nowrap"
+          style="color: #8e8e93;"
         >
-          до {{ expiryLabel }}
+          {{ expiryLabel }}
         </span>
       </div>
     </div>
 
-    <!-- Chevron -->
-    <svg
-      class="w-4 h-4 text-tg-hint shrink-0"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
+    <!-- Right chevron -->
+    <span class="text-[18px] shrink-0" style="color: #c7c7cc;">&rsaquo;</span>
   </button>
 </template>

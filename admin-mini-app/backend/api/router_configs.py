@@ -10,7 +10,7 @@ import logging
 from typing import Annotated
 
 from db.models import Admin, VPNConfig
-from db.repositories import config_repo, settings_repo
+from db.repositories import config_repo, log_repo, settings_repo
 from fastapi import APIRouter, Depends, HTTPException
 from panel.client import PanelClient, PanelClientError
 from schemas.config import (
@@ -18,6 +18,7 @@ from schemas.config import (
     ConfigToggle,
     ConfigToggleAllRequest,
     ConfigToggleAllResponse,
+    ConfigToggleResponse,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from utils.crypto import decrypt
@@ -27,6 +28,9 @@ from api.deps import get_current_admin, get_db
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["configs"])
+
+# TODO: admin_username is None because Admin model doesn't store Telegram username.
+# Future: extract username from initData in deps.py and pass through.
 
 
 # ---------------------------------------------------------------------------
@@ -142,13 +146,13 @@ async def get_user_configs(
     ]
 
 
-@router.patch("/configs/{config_id}/toggle")
+@router.patch("/configs/{config_id}/toggle", response_model=ConfigToggleResponse)
 async def toggle_config(
     config_id: int,
     payload: ConfigToggle,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(get_current_admin)],
-) -> dict:
+    admin: Annotated[Admin, Depends(get_current_admin)],
+) -> ConfigToggleResponse:
     """Toggle a single VPN config on the 3x-ui panel.
 
     The enabled state is only managed on the panel side.
@@ -163,7 +167,16 @@ async def toggle_config(
     if warning:
         logger.warning("Config %d toggle panel warning: %s", config_id, warning)
 
-    return {"success": True, "warning": warning}
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action="toggle_config",
+        target=config.email,
+        details={"enabled": payload.enabled, "config_id": config_id},
+    )
+
+    return ConfigToggleResponse(success=True, warning=warning)
 
 
 @router.post(
@@ -174,7 +187,7 @@ async def toggle_all_configs(
     user_id: int,
     payload: ConfigToggleAllRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(get_current_admin)],
+    admin: Annotated[Admin, Depends(get_current_admin)],
 ) -> ConfigToggleAllResponse:
     """Toggle all VPN configs for a user on the 3x-ui panel."""
     configs = await config_repo.get_user_configs(session, user_id)
@@ -184,6 +197,15 @@ async def toggle_all_configs(
         logger.warning(
             "Toggle-all for user %d panel warning: %s", user_id, warning
         )
+
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action="toggle_all_configs",
+        target=str(user_id),
+        details={"enabled": payload.enabled, "count": len(configs)},
+    )
 
     return ConfigToggleAllResponse(
         updated_count=len(configs),

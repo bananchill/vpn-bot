@@ -12,6 +12,8 @@ from contextlib import asynccontextmanager
 
 from api.router_configs import router as configs_router
 from api.router_dashboard import router as dashboard_router
+from api.router_logs import router as logs_router
+from api.router_promos import router as promos_router
 from api.router_settings import router as settings_router
 from api.router_users import router as users_router
 from bot.bot import start_polling, stop_polling
@@ -65,6 +67,8 @@ app.include_router(settings_router)
 app.include_router(users_router)
 app.include_router(configs_router)
 app.include_router(dashboard_router)
+app.include_router(promos_router)
+app.include_router(logs_router)
 
 
 @app.get("/api/health")

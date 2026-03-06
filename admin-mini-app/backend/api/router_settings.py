@@ -10,7 +10,7 @@ import time
 from typing import Annotated
 
 from db.models import Admin
-from db.repositories import settings_repo
+from db.repositories import log_repo, settings_repo
 from fastapi import APIRouter, Depends, HTTPException
 from panel.client import PanelClient, PanelClientError
 from schemas.settings import (
@@ -26,6 +26,9 @@ from api.deps import get_current_admin, get_db
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+# TODO: admin_username is None because Admin model doesn't store Telegram username.
+# Future: extract username from initData in deps.py and pass through.
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +101,7 @@ async def get_settings(
 async def update_settings(
     payload: SettingsUpdate,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(require_owner)],
+    admin: Annotated[Admin, Depends(require_owner)],
 ) -> SettingsResponse:
     """Update settings.  Only non-None fields in the payload are applied.
 
@@ -124,6 +127,17 @@ async def update_settings(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     settings = await settings_repo.upsert_settings(session, **update_data)
+
+    # Audit log — record which fields were changed (without sensitive values)
+    changed_fields = list(update_data.keys())
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action="update_settings",
+        target=None,
+        details={"changed_fields": changed_fields},
+    )
 
     masked_token: str | None = None
     if settings.client_bot_token:

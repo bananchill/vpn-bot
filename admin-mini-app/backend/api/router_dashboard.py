@@ -67,16 +67,18 @@ async def get_dashboard_stats(
     _admin: Annotated[Admin, Depends(get_current_admin)],
 ) -> DashboardStatsResponse:
     """Return aggregated statistics for the admin dashboard."""
-    total_users = await dashboard_repo.count_total_users(session)
-    paid_users = await dashboard_repo.count_paid_users(session)
-    expiring_soon = await dashboard_repo.count_expiring_soon(session)
+    user_counts = await dashboard_repo.get_user_counts(session)
     active_configs = await dashboard_repo.count_active_configs(session)
+    active_promos = await dashboard_repo.count_active_promos(session)
 
     return DashboardStatsResponse(
-        total_users=total_users,
-        paid_users=paid_users,
-        expiring_soon=expiring_soon,
+        total_users=user_counts.total_users,
+        paid_users=user_counts.paid_users,
+        unpaid_users=user_counts.unpaid_users,
+        expiring_soon=user_counts.expiring_soon,
         active_configs=active_configs,
+        new_users_30d=user_counts.new_users_30d,
+        active_promos=active_promos,
     )
 
 

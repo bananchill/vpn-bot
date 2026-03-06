@@ -10,7 +10,7 @@ import math
 from typing import Annotated
 
 from db.models import Admin
-from db.repositories import user_repo
+from db.repositories import log_repo, user_repo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from schemas.config import ConfigResponse
 from schemas.user import (
@@ -22,6 +22,7 @@ from schemas.user import (
     UserExtendRequest,
     UserListResponse,
     UserNoteRequest,
+    UserPromoUsage,
     UserShort,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +32,9 @@ from api.deps import get_current_admin, get_db
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+# TODO: admin_username is None because Admin model doesn't store Telegram username.
+# Future: extract username from initData in deps.py and pass through.
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +117,16 @@ async def get_user(
         for c in user.configs
     ]
 
+    promo_usages = [
+        UserPromoUsage(
+            code=pu.promo.code,
+            discount_percent=pu.promo.discount_percent,
+            used_at=pu.used_at,
+        )
+        for pu in user.promo_usages
+        if pu.promo is not None
+    ]
+
     return UserDetail(
         id=user.id,
         telegram_id=user.telegram_id,
@@ -125,7 +139,7 @@ async def get_user(
         subscribed_since=user.subscribed_since,
         admin_note=user.admin_note,
         configs=configs,
-        promo_usages=[],
+        promo_usages=promo_usages,
     )
 
 
@@ -134,7 +148,7 @@ async def toggle_block(
     user_id: int,
     payload: UserBlockRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(get_current_admin)],
+    admin: Annotated[Admin, Depends(get_current_admin)],
 ) -> UserShort:
     """Block or unblock a user."""
     user = await user_repo.update_user_blocked(
@@ -143,8 +157,18 @@ async def toggle_block(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    action = "blocked" if payload.is_blocked else "unblocked"
-    logger.info("User %d %s by admin", user_id, action)
+    action = "block_user" if payload.is_blocked else "unblock_user"
+    target = f"@{user.username}" if user.username else str(user.telegram_id)
+
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action=action,
+        target=target,
+    )
+
+    logger.info("User %d %s by admin %d", user_id, action, admin.telegram_id)
 
     return UserShort(
         id=user.id,
@@ -163,12 +187,22 @@ async def update_note(
     user_id: int,
     payload: UserNoteRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(get_current_admin)],
+    admin: Annotated[Admin, Depends(get_current_admin)],
 ) -> UserShort:
     """Update the admin note on a user."""
     user = await user_repo.update_user_note(session, user_id, payload.note)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    target = f"@{user.username}" if user.username else str(user.telegram_id)
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action="update_note",
+        target=target,
+        details={"note": payload.note},
+    )
 
     return UserShort(
         id=user.id,
@@ -187,7 +221,7 @@ async def extend_subscription(
     user_id: int,
     payload: UserExtendRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[Admin, Depends(get_current_admin)],
+    admin: Annotated[Admin, Depends(get_current_admin)],
 ) -> UserDetail:
     """Extend a user's subscription by the specified number of days.
 
@@ -203,7 +237,22 @@ async def extend_subscription(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    logger.info("Subscription extended by %d days for user %d", payload.days, user_id)
+    target = f"@{user.username}" if user.username else str(user.telegram_id)
+    await log_repo.log_action(
+        session,
+        admin_telegram_id=admin.telegram_id,
+        admin_username=None,
+        action="extend_subscription",
+        target=target,
+        details={"days": payload.days},
+    )
+
+    logger.info(
+        "Subscription extended by %d days for user %d by admin %d",
+        payload.days,
+        user_id,
+        admin.telegram_id,
+    )
 
     # Reload configs since extend_subscription uses get_user_by_id with selectinload
     configs = [
@@ -215,6 +264,16 @@ async def extend_subscription(
             created_at=c.created_at,
         )
         for c in user.configs
+    ]
+
+    promo_usages = [
+        UserPromoUsage(
+            code=pu.promo.code,
+            discount_percent=pu.promo.discount_percent,
+            used_at=pu.used_at,
+        )
+        for pu in user.promo_usages
+        if pu.promo is not None
     ]
 
     return UserDetail(
@@ -229,5 +288,5 @@ async def extend_subscription(
         subscribed_since=user.subscribed_since,
         admin_note=user.admin_note,
         configs=configs,
-        promo_usages=[],
+        promo_usages=promo_usages,
     )

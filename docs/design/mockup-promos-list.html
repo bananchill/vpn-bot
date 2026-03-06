@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>PromosListView Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f7;
+    color: #1a1a2e;
+    width: 375px;
+    min-height: 812px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    height: 49px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+
+  /* Content */
+  .content {
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 100px;
+  }
+
+  /* Top action row */
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .top-row .count {
+    font-size: 13px;
+    color: #8e8e93;
+  }
+  .top-row .add-btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: #007aff;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Promo card */
+  .promo-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .promo-card:active {
+    opacity: 0.8;
+  }
+
+  /* Card top row */
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .promo-code {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  .discount-badge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .discount-badge.green {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  /* Progress section */
+  .progress-section {}
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .progress-labels .label {
+    font-size: 12px;
+    color: #8e8e93;
+  }
+  .progress-labels .value {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1a1a2e;
+  }
+  .progress-track {
+    height: 6px;
+    background: #f5f5f7;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .progress-fill.blue { background: #007aff; }
+  .progress-fill.orange { background: #e65100; }
+  .progress-fill.red { background: #c62828; }
+
+  /* Card bottom row */
+  .card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .status-badge.active {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  .status-badge.inactive {
+    background: #fce4ec;
+    color: #c62828;
+  }
+  .status-badge.expired {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  .expiry-date {
+    font-size: 12px;
+    color: #8e8e93;
+  }
+
+  /* Cards list */
+  .cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Navbar */
+  .navbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,0,0,0.08);
+    height: 81px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    padding: 9px 8px 0;
+    width: 375px;
+  }
+  .nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    padding-top: 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  .nav-tab .icon { font-size: 22px; line-height: 1; }
+  .nav-tab .label { font-size: 10px; line-height: 1.2; }
+  .nav-tab.active { color: #007aff; }
+  .nav-tab.inactive { color: #8e8e93; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>Промокоды</h1>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Top action row -->
+  <div class="top-row">
+    <span class="count">3 промокода</span>
+    <button class="add-btn">+ Создать</button>
+  </div>
+
+  <!-- Promo cards list -->
+  <div class="cards-list">
+
+    <!-- Card 1: SUMMER25 - Active, 12% usage -->
+    <div class="promo-card">
+      <div class="card-top">
+        <span class="promo-code">SUMMER25</span>
+        <span class="discount-badge green">-25%</span>
+      </div>
+      <div class="progress-section">
+        <div class="progress-labels">
+          <span class="label">Использований</span>
+          <span class="value">12 / 100</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill blue" style="width: 12%;"></div>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <span class="status-badge active">Активен</span>
+        <span class="expiry-date">до 04.04.2026</span>
+      </div>
+    </div>
+
+    <!-- Card 2: WELCOME10 - Active, 90% usage (warning) -->
+    <div class="promo-card">
+      <div class="card-top">
+        <span class="promo-code">WELCOME10</span>
+        <span class="discount-badge green">-10%</span>
+      </div>
+      <div class="progress-section">
+        <div class="progress-labels">
+          <span class="label">Использований</span>
+          <span class="value">45 / 50</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill orange" style="width: 90%;"></div>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <span class="status-badge active">Активен</span>
+        <span class="expiry-date">до 15.03.2026</span>
+      </div>
+    </div>
+
+    <!-- Card 3: VIP50 - Inactive, 100% usage -->
+    <div class="promo-card">
+      <div class="card-top">
+        <span class="promo-code">VIP50</span>
+        <span class="discount-badge green">-50%</span>
+      </div>
+      <div class="progress-section">
+        <div class="progress-labels">
+          <span class="label">Использований</span>
+          <span class="value">5 / 5</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill red" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <span class="status-badge inactive">Неактивен</span>
+        <span class="expiry-date">до 01.03.2026</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom Navbar -->
+<div class="navbar">
+  <button class="nav-tab inactive">
+    <span class="icon">&#x1F3E0;</span>
+    <span class="label">Главная</span>
+  </button>
+  <button class="nav-tab inactive">
+    <span class="icon">&#x1F465;</span>
+    <span class="label">Юзеры</span>
+  </button>
+  <button class="nav-tab active">
+    <span class="icon">&#x1F3F7;&#xFE0F;</span>
+    <span class="label">Промо</span>
+  </button>
+  <button class="nav-tab inactive">
+    <span class="icon">&bull;&bull;&bull;</span>
+    <span class="label">Ещё</span>
+  </button>
+</div>
+
+</body>
+</html>

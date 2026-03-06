@@ -13,6 +13,14 @@ from pydantic import BaseModel, computed_field
 from schemas.config import ConfigResponse
 
 
+class UserPromoUsage(BaseModel):
+    """A promo code usage entry shown on the user detail page."""
+
+    code: str
+    discount_percent: int
+    used_at: datetime
+
+
 class UserShort(BaseModel):
     """Compact user representation for list views."""
 
@@ -32,8 +40,7 @@ class UserDetail(UserShort):
     subscribed_since: datetime | None = None
     admin_note: str | None = None
     configs: list[ConfigResponse] = []
-    # promo_usages will be populated in a later stage
-    promo_usages: list[dict[str, str]] = []
+    promo_usages: list[UserPromoUsage] = []
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -44,9 +51,7 @@ class UserDetail(UserShort):
         """
         if self.subscribed_since is None:
             return None
-        delta = datetime.now(UTC) - self.subscribed_since.replace(
-            tzinfo=UTC
-        )
+        delta = datetime.now(UTC) - self.subscribed_since.astimezone(UTC)
         return max(0, delta.days)
 
 

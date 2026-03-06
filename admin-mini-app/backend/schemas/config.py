@@ -31,6 +31,13 @@ class ConfigToggleAllRequest(BaseModel):
     enabled: bool
 
 
+class ConfigToggleResponse(BaseModel):
+    """Result of a single config toggle operation."""
+
+    success: bool
+    warning: str | None = None
+
+
 class ConfigToggleAllResponse(BaseModel):
     """Result of a bulk config toggle operation."""
 

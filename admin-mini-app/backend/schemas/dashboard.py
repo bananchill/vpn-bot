@@ -11,8 +11,11 @@ class DashboardStatsResponse(BaseModel):
 
     total_users: int
     paid_users: int
+    unpaid_users: int
     expiring_soon: int
     active_configs: int
+    new_users_30d: int
+    active_promos: int
 
 
 class DashboardEvent(BaseModel):

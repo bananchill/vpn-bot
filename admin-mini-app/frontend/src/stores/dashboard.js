@@ -6,8 +6,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const stats = reactive({
     total_users: 0,
     paid_users: 0,
+    unpaid_users: 0,
     expiring_soon: 0,
     active_configs: 0,
+    new_users_30d: 0,
+    active_promos: 0,
   })
 
   const recentEvents = ref([])

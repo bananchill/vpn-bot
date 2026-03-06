@@ -101,6 +101,15 @@ async function confirmExtend() {
   }
 }
 
+// -- helpers ----------------------------------------------------------------
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+}
+
 // -- config toggles (called by ConfigList via promise-based events) ---------
 
 async function handleConfigToggle({ configId, enabled, resolve, reject }) {
@@ -205,6 +214,53 @@ async function handleToggleAll({ enabled, resolve, reject }) {
         @toggle="handleConfigToggle"
         @toggle-all="handleToggleAll"
       />
+
+      <!-- Promo usages section -->
+      <div
+        v-if="store.currentUser.promo_usages && store.currentUser.promo_usages.length > 0"
+      >
+        <p
+          class="text-[13px] font-semibold uppercase tracking-[0.5px] mb-2 px-1"
+          style="color: #8e8e93;"
+        >
+          Промокоды
+        </p>
+        <div
+          class="bg-white rounded-[16px] overflow-hidden"
+          style="box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
+        >
+          <div
+            v-for="(usage, idx) in store.currentUser.promo_usages"
+            :key="usage.code + '-' + usage.used_at"
+            class="flex items-center justify-between px-4 py-3"
+            :class="idx < store.currentUser.promo_usages.length - 1 ? 'border-b' : ''"
+            style="border-color: rgba(0,0,0,0.06);"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center text-[16px] shrink-0"
+                style="background-color: #e8f5e9;"
+              >
+                &#x1F3F7;&#xFE0F;
+              </div>
+              <div>
+                <p class="text-[14px] font-semibold tracking-wide" style="color: #1a1a2e;">
+                  {{ usage.code }}
+                </p>
+                <p class="text-[12px]" style="color: #8e8e93;">
+                  {{ formatDate(usage.used_at) }}
+                </p>
+              </div>
+            </div>
+            <span
+              class="rounded-[8px] px-[10px] py-[3px] text-[13px] font-semibold shrink-0"
+              style="background-color: #e8f5e9; color: #2e7d32;"
+            >
+              -{{ usage.discount_percent }}%
+            </span>
+          </div>
+        </div>
+      </div>
 
       <!-- Action buttons -->
       <div class="space-y-2 pt-2">

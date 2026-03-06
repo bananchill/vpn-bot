@@ -45,7 +45,7 @@ const statCards = computed(() => [
     bg: '#e3f2fd',
   },
   {
-    label: 'Доход за месяц',
+    label: 'Платных',
     value: formatNumber(dashboardStore.stats.paid_users),
     emoji: '\uD83D\uDCB0',
     bg: '#f3e5f5',
@@ -61,6 +61,24 @@ const statCards = computed(() => [
     value: formatNumber(dashboardStore.stats.active_configs),
     emoji: '\uD83D\uDD11',
     bg: '#e8f5e9',
+  },
+  {
+    label: 'Новых за 30 дней',
+    value: formatNumber(dashboardStore.stats.new_users_30d),
+    emoji: '\uD83D\uDCCA',
+    bg: '#f3e5f5',
+  },
+  {
+    label: 'Активных промо',
+    value: formatNumber(dashboardStore.stats.active_promos),
+    emoji: '\uD83C\uDFF7\uFE0F',
+    bg: '#e3f2fd',
+  },
+  {
+    label: 'Без подписки',
+    value: formatNumber(dashboardStore.stats.unpaid_users),
+    emoji: '\uD83D\uDCB3',
+    bg: '#fce4ec',
   },
 ])
 
@@ -269,7 +287,7 @@ function navigateTo(path) {
         >
           <div
             v-for="(event, idx) in dashboardStore.recentEvents"
-            :key="idx"
+            :key="event.id || idx"
             class="flex items-center gap-3 px-4 py-3"
             :class="idx < dashboardStore.recentEvents.length - 1 ? 'border-b border-black/[0.06]' : ''"
           >

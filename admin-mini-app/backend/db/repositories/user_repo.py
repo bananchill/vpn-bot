@@ -11,7 +11,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import User
+from db.models import PromoUsage, User
 from sqlalchemy import text
 
 
@@ -117,7 +117,10 @@ async def get_user_by_id(
     stmt = (
         select(User)
         .where(User.id == user_id)
-        .options(selectinload(User.configs))
+        .options(
+            selectinload(User.configs),
+            selectinload(User.promo_usages).selectinload(PromoUsage.promo),
+        )
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()

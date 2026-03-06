@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.engine import Base
@@ -65,6 +65,9 @@ class User(Base):
     configs: Mapped[list["VPNConfig"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    promo_usages: Mapped[list["PromoUsage"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User telegram_id={self.telegram_id} username={self.username}>"
@@ -111,3 +114,94 @@ class Admin(Base):
 
     def __repr__(self) -> str:
         return f"<Admin telegram_id={self.telegram_id} role={self.role}>"
+
+
+class PromoCode(Base):
+    """Promotional code with a percentage discount and activation limit.
+
+    Tracks current usage count and can be deactivated by an admin.
+    The `is_expired` check lives in the Pydantic schema layer, not here,
+    because it depends on wall-clock time and should not be stored.
+    """
+
+    __tablename__ = "promo_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(
+        String(32), unique=True, index=True, nullable=False
+    )
+    discount_percent: Mapped[int] = mapped_column(nullable=False)
+    max_activations: Mapped[int] = mapped_column(nullable=False)
+    current_activations: Mapped[int] = mapped_column(
+        default=0, server_default="0", nullable=False
+    )
+    valid_until: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    is_active: Mapped[bool] = mapped_column(
+        default=True, server_default="true", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    usages: Mapped[list["PromoUsage"]] = relationship(
+        back_populates="promo", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<PromoCode code={self.code} discount={self.discount_percent}%>"
+
+
+class PromoUsage(Base):
+    """Records a single use of a promo code by a user.
+
+    Both foreign keys cascade on delete: removing a promo code or a user
+    automatically cleans up associated usage records.
+    """
+
+    __tablename__ = "promo_usages"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    promo_id: Mapped[int] = mapped_column(
+        ForeignKey("promo_codes.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    promo: Mapped["PromoCode"] = relationship(back_populates="usages")
+    user: Mapped["User"] = relationship(back_populates="promo_usages")
+
+    def __repr__(self) -> str:
+        return f"<PromoUsage promo_id={self.promo_id} user_id={self.user_id}>"
+
+
+class AdminLog(Base):
+    """Audit log entry for admin actions.
+
+    Every mutating admin operation (block, extend, toggle, settings update,
+    promo CRUD) writes a row here for traceability.  The `details` column
+    stores a free-form JSON string with action-specific context.
+    """
+
+    __tablename__ = "admin_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    admin_telegram_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, index=True
+    )
+    admin_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    target: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Free-form JSON string with action-specific context (e.g., reason, old/new values)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+    def __repr__(self) -> str:
+        return f"<AdminLog action={self.action} admin={self.admin_telegram_id}>"

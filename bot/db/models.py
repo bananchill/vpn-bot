@@ -8,6 +8,33 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bot.db.base import Base
 
 
+class AdminRecord(Base):
+    """Read-only mirror of the ``admins`` table managed by admin-mini-app.
+
+    The bot uses this model to check admin rights via a direct SELECT
+    against the shared PostgreSQL database. The admin-mini-app owns writes
+    to this table; the bot only reads from it.
+
+    Named ``AdminRecord`` (not ``Admin``) to avoid collision with the
+    ``AdminSession`` model and aiogram's own ``Admin`` type in tests.
+    """
+
+    __tablename__ = "admins"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    telegram_id: Mapped[int] = mapped_column(
+        BigInteger, unique=True, nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<AdminRecord telegram_id={self.telegram_id} role={self.role}>"
+
+
 class User(Base):
     """Telegram user."""
 

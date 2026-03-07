@@ -1,4 +1,9 @@
-"""SQLAlchemy ORM models for the admin mini-app."""
+"""SQLAlchemy ORM models for the admin mini-app.
+
+Mirror models (AdminSession) reflect tables owned by the bot so that
+the admin-mini-app can read/write them through the shared PostgreSQL
+database without an intermediate HTTP API.
+"""
 
 from datetime import datetime
 
@@ -98,7 +103,13 @@ class VPNConfig(Base):
 
 
 class Admin(Base):
-    """Admin user with access to the mini-app panel."""
+    """Admin user with access to the mini-app panel.
+
+    Serves as the single source of truth for administrator identity.
+    Both the bot and admin-mini-app read/write this table directly via
+    a shared PostgreSQL database.  Per-admin panel credentials and
+    config-bot tokens are stored here (encrypted with Fernet).
+    """
 
     __tablename__ = "admins"
 
@@ -108,6 +119,24 @@ class Admin(Base):
     )
     # "owner" grants full access; "moderator" has limited access
     role: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Telegram username — populated from initData on first login, updated on each entry
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- Per-admin 3x-ui panel credentials --
+    panel_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    panel_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Fernet-encrypted panel password
+    panel_password_encrypted: Mapped[str | None] = mapped_column(
+        String(1024), nullable=True
+    )
+    # Base URL for subscription links (e.g. https://host:2096)
+    panel_sub_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    # -- Per-admin config-bot token (Fernet-encrypted) --
+    config_bot_token_encrypted: Mapped[str | None] = mapped_column(
+        String(1024), nullable=True
+    )
+
     added_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
@@ -205,3 +234,38 @@ class AdminLog(Base):
 
     def __repr__(self) -> str:
         return f"<AdminLog action={self.action} admin={self.admin_telegram_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Mirror models — tables owned by the bot, accessed by admin-mini-app
+# ---------------------------------------------------------------------------
+
+
+class AdminSession(Base):
+    """Mirror of the bot's ``admin_sessions`` table.
+
+    The bot creates and owns the table schema (including the FK to
+    ``users.id``).  The admin-mini-app writes to it when an admin saves
+    panel credentials via ``PUT /api/settings`` so the bot can pick up
+    the new credentials on its next panel request.
+
+    This model MUST stay structurally compatible with
+    ``bot/db/models.py:AdminSession``.  Alembic autogenerate will not
+    create a duplicate migration because the table already exists.
+    """
+
+    __tablename__ = "admin_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    panel_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    encrypted_credentials: Mapped[str] = mapped_column(Text, nullable=False)
+    session_cookie: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cookie_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    def __repr__(self) -> str:
+        return f"<AdminSession user_id={self.user_id} panel_url={self.panel_url}>"

@@ -3,6 +3,9 @@
 These commands are only accessible to the bot owner (OWNER_ID).
 They are not registered via set_my_commands, so they stay invisible
 in the Telegram command menu.
+
+Note: /setadmin, /rmadmin, /admins are deprecated since TASK-018.
+Admin management is now handled through the admin mini-app.
 """
 
 from __future__ import annotations
@@ -16,11 +19,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
 from bot.db.repositories.promo_code_repo import PromoCodeRepository
-from bot.db.repositories.user_repo import UserRepository
 
 logger = logging.getLogger(__name__)
 
 router = Router(name="owner")
+
+# Unified deprecation message — admin management moved to the mini-app (TASK-018)
+_DEPRECATED_MSG = (
+    "Управление администраторами перенесено в мини-апп.\n"
+    "Используйте админ-панель для добавления и удаления администраторов."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -60,108 +68,36 @@ def _extract_arg(text: str | None) -> str | object:
 
 
 # ---------------------------------------------------------------------------
-# /setadmin <telegram_id>
+# /setadmin (deprecated — TASK-018)
 # ---------------------------------------------------------------------------
 
 
 @router.message(Command("setadmin"))
-async def cmd_set_admin(message: Message, db_session: AsyncSession) -> None:
-    """Promote a user to admin by their Telegram ID."""
-    raw_arg = _extract_arg(message.text)
-
-    if raw_arg is _MISSING:
-        await message.answer("Использование: /setadmin <telegram_id>")
-        return
-
-    try:
-        telegram_id = int(raw_arg)  # type: ignore[arg-type]
-    except ValueError:
-        await message.answer("Ошибка: telegram_id должен быть числом.")
-        return
-
-    repo = UserRepository(db_session)
-
-    # Check if user already is an admin before modifying
-    existing = await repo.get_by_telegram_id(telegram_id)
-    if existing is None:
-        await message.answer(
-            f"Пользователь {telegram_id} не найден в базе данных.\n"
-            "Пользователь должен сначала написать боту."
-        )
-        return
-
-    if existing.is_admin:
-        await message.answer(
-            f"Пользователь {telegram_id} уже является администратором."
-        )
-        return
-
-    await repo.set_admin(telegram_id, is_admin=True)
-    await message.answer(
-        f"Пользователь {telegram_id} назначен администратором."
-    )
-    logger.info("Owner set admin: telegram_id=%s", telegram_id)
+async def cmd_set_admin(message: Message) -> None:
+    """Deprecated: admin management moved to mini-app."""
+    await message.answer(_DEPRECATED_MSG)
 
 
 # ---------------------------------------------------------------------------
-# /rmadmin <telegram_id>
+# /rmadmin (deprecated — TASK-018)
 # ---------------------------------------------------------------------------
 
 
 @router.message(Command("rmadmin"))
-async def cmd_rm_admin(message: Message, db_session: AsyncSession) -> None:
-    """Remove admin privileges from a user by their Telegram ID."""
-    raw_arg = _extract_arg(message.text)
-
-    if raw_arg is _MISSING:
-        await message.answer("Использование: /rmadmin <telegram_id>")
-        return
-
-    try:
-        telegram_id = int(raw_arg)  # type: ignore[arg-type]
-    except ValueError:
-        await message.answer("Ошибка: telegram_id должен быть числом.")
-        return
-
-    repo = UserRepository(db_session)
-
-    existing = await repo.get_by_telegram_id(telegram_id)
-    if existing is None or not existing.is_admin:
-        await message.answer(
-            f"Пользователь {telegram_id} не найден или не является администратором."
-        )
-        return
-
-    await repo.set_admin(telegram_id, is_admin=False)
-    await message.answer(
-        f"Права администратора сняты с пользователя {telegram_id}."
-    )
-    logger.info("Owner removed admin: telegram_id=%s", telegram_id)
+async def cmd_rm_admin(message: Message) -> None:
+    """Deprecated: admin management moved to mini-app."""
+    await message.answer(_DEPRECATED_MSG)
 
 
 # ---------------------------------------------------------------------------
-# /admins
+# /admins (deprecated — TASK-018)
 # ---------------------------------------------------------------------------
 
 
 @router.message(Command("admins"))
-async def cmd_admins(message: Message, db_session: AsyncSession) -> None:
-    """List all current admin users."""
-    repo = UserRepository(db_session)
-    admins = await repo.list_admins()
-
-    if not admins:
-        await message.answer("Администраторов нет.")
-        return
-
-    lines: list[str] = ["Текущие администраторы:"]
-    for admin in admins:
-        if admin.username:
-            lines.append(f"  - @{admin.username} (ID: {admin.telegram_id})")
-        else:
-            lines.append(f"  - ID: {admin.telegram_id}")
-
-    await message.answer("\n".join(lines))
+async def cmd_admins(message: Message) -> None:
+    """Deprecated: admin management moved to mini-app."""
+    await message.answer(_DEPRECATED_MSG)
 
 
 # ---------------------------------------------------------------------------

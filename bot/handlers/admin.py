@@ -41,10 +41,15 @@ class AdminLoginStates(StatesGroup):
 
 @router.message(Command("admin"))
 async def cmd_admin(message: Message, state: FSMContext) -> None:
-    """Start the admin initialization flow."""
+    """Start the admin initialization flow.
+
+    The FSM remains as a fallback for manual credential entry.
+    Primary configuration should be done through the admin mini-app.
+    """
     await state.clear()
     await state.set_state(AdminLoginStates.waiting_for_login)
     await message.answer(
+        "Настройки панели также доступны через мини-апп.\n\n"
         "Введите логин от панели 3x-ui:"
     )
 

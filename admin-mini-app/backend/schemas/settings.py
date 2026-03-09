@@ -1,42 +1,73 @@
 """Pydantic v2 schemas for the settings API.
 
-These DTOs transfer settings data between the API layer and clients.
-Sensitive fields (password, bot token) are never exposed in plaintext;
-the response schema uses boolean flags and masked strings instead.
+Split into two groups:
+- **Personal** (per-admin panel credentials and config-bot token)
+- **Global** (owner-only: owner_id, client_bot_token for the admin bot)
+
+Sensitive fields are never exposed in plaintext; boolean flags and masked
+strings are used instead.
 """
 
 from datetime import datetime
 
 from pydantic import BaseModel
 
+# ---------------------------------------------------------------------------
+# Personal settings (per-admin)
+# ---------------------------------------------------------------------------
 
-class SettingsResponse(BaseModel):
-    """Settings data returned to the client with sensitive fields masked."""
+
+class PersonalSettingsResponse(BaseModel):
+    """Per-admin settings returned by ``GET /api/settings``."""
 
     panel_url: str | None = None
     panel_sub_url: str | None = None
     panel_username: str | None = None
-    # True when an encrypted password is stored, never exposes the actual value
-    has_password: bool = False
-    owner_id: int | None = None
-    # Masked token like "••••ab3f", or None if not set
-    client_bot_token_masked: str | None = None
+    has_panel_password: bool = False
+    has_config_bot_token: bool = False
     updated_at: datetime | None = None
 
 
-class SettingsUpdate(BaseModel):
-    """Partial update payload — only non-None fields are applied.
+class PersonalSettingsUpdate(BaseModel):
+    """Partial update payload for ``PUT /api/settings``.
 
     Password and bot token arrive as plaintext; the API layer encrypts
-    them with Fernet before persisting.
+    them with Fernet before persisting.  Only non-None fields are applied.
     """
 
     panel_url: str | None = None
     panel_sub_url: str | None = None
     panel_username: str | None = None
     panel_password: str | None = None
+    config_bot_token: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Global settings (owner-only)
+# ---------------------------------------------------------------------------
+
+
+class GlobalSettingsResponse(BaseModel):
+    """Global settings returned by ``GET /api/settings/global``."""
+
+    owner_id: int | None = None
+    client_bot_token_masked: str | None = None
+    updated_at: datetime | None = None
+
+
+class GlobalSettingsUpdate(BaseModel):
+    """Update payload for ``PUT /api/settings/global``.
+
+    Only the owner can change these values.
+    """
+
     owner_id: int | None = None
     client_bot_token: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Connection check (shared)
+# ---------------------------------------------------------------------------
 
 
 class ConnectionCheckResponse(BaseModel):

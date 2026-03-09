@@ -7,12 +7,11 @@ the API layer is responsible for converting them to Pydantic DTOs.
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from db.models import PromoUsage, User
-from sqlalchemy import text
 
 
 async def get_users(
@@ -208,3 +207,49 @@ async def extend_subscription(
     await session.flush()
     await session.refresh(user)
     return user
+
+
+async def get_by_telegram_id(
+    session: AsyncSession,
+    telegram_id: int,
+) -> User | None:
+    """Return a user by their Telegram ID, or None."""
+    stmt = select(User).where(User.telegram_id == telegram_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_or_create_by_telegram_id(
+    session: AsyncSession,
+    telegram_id: int,
+) -> User:
+    """Return the user with the given telegram_id, creating one if absent.
+
+    The newly created user has ``is_admin=False`` by default; callers
+    should set the flag explicitly via ``ensure_is_admin`` if needed.
+    """
+    user = await get_by_telegram_id(session, telegram_id)
+    if user is not None:
+        return user
+
+    user = User(telegram_id=telegram_id, is_admin=False)
+    session.add(user)
+    await session.flush()
+    await session.refresh(user)
+    return user
+
+
+async def ensure_is_admin(
+    session: AsyncSession,
+    telegram_id: int,
+) -> None:
+    """Set ``is_admin=True`` on the user with the given telegram_id.
+
+    If the user row does not exist yet it is created first.  This is
+    called during the first owner auto-creation flow so the bot can
+    recognise the admin via the denormalized flag.
+    """
+    user = await get_or_create_by_telegram_id(session, telegram_id)
+    if not user.is_admin:
+        user.is_admin = True
+        await session.flush()

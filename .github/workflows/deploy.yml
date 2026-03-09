@@ -49,7 +49,9 @@ jobs:
           else
             git clone https://github.com/bananchill/proxy.git ~/proxy
           fi
-          cd ~/proxy && docker compose up -d
+          cd ~/proxy
+          docker compose pull
+          docker compose up -d --force-recreate --remove-orphans
 
       - name: Copy .env from server home
         run: cp ~/.env .env

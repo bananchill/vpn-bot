@@ -35,36 +35,16 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    networks:
+      - default
+      - proxy
 
   admin-frontend:
     build: ./admin-mini-app/frontend
     restart: unless-stopped
-
-  certgen:
-    image: alpine/openssl
-    restart: unless-stopped
-    environment:
-      SERVER_HOST: ${SERVER_HOST:-localhost}
-    volumes:
-      - certs:/etc/nginx/certs
-      - ./certs/generate-cert.sh:/generate-cert.sh:ro
-    entrypoint: ["sh", "/generate-cert.sh"]
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - certs:/etc/nginx/certs:ro
-    depends_on:
-      certgen:
-        condition: service_started
-      admin-backend:
-        condition: service_started
-      admin-frontend:
-        condition: service_started
-    restart: unless-stopped
+    networks:
+      - default
+      - proxy
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -80,7 +60,10 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+networks:
+  proxy:
+    external: true
+
 volumes:
   pgdata:
   pgadmin_data:
-  certs:

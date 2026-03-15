@@ -36,4 +36,4 @@ COPY alembic.ini ./
 # Ensure the venv's Python is used by default
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["python", "-m", "bot"]
+CMD ["sh", "-c", "alembic upgrade head && python -m bot"]

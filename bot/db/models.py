@@ -8,6 +8,32 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bot.db.base import Base
 
 
+class BotSettingsRecord(Base):
+    """Read-only mirror of the ``bot_settings`` table managed by admin-mini-app.
+
+    Singleton row (id=1) storing panel connection credentials and bot token.
+    Sensitive fields (panel_password, client_bot_token) are Fernet-encrypted.
+    """
+
+    __tablename__ = "bot_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    panel_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    panel_sub_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    panel_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    panel_password: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    owner_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    client_bot_token: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<BotSettingsRecord id={self.id} panel_url={self.panel_url}>"
+
+
 class AdminRecord(Base):
     """Read-only mirror of the ``admins`` table managed by admin-mini-app.
 

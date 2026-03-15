@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     PANEL_USERNAME: str = ""  # 3x-ui panel login
     PANEL_PASSWORD: str = ""  # 3x-ui panel password
     ENCRYPTION_KEY: str = ""  # Fernet key for encrypting admin credentials
+    FERNET_KEY: str = ""  # Fernet key for decrypting bot_settings from DB
     OWNER_ID: int = 0  # Telegram user ID of the bot owner
     DEFAULT_INBOUND_ID: int = 1
     MAX_CONFIGS_PER_USER: int = 7

@@ -131,6 +131,45 @@ class TestLoadSettingsFromDB:
         assert settings.PANEL_URL == "old-url"  # unchanged
 
     @pytest.mark.asyncio
+    async def test_retries_when_table_missing(self, fernet: Fernet) -> None:
+        """DB query raises (table doesn't exist) → retry, then succeed."""
+        from sqlalchemy.exc import ProgrammingError
+
+        row = _make_bot_settings_row(fernet, bot_token="after-error")
+        session_ok = AsyncMock()
+        session_ok.scalar.return_value = row
+
+        session_err = AsyncMock()
+        session_err.scalar.side_effect = ProgrammingError(
+            "SELECT ...", {}, Exception("relation \"bot_settings\" does not exist")
+        )
+
+        call_count = 0
+
+        class _Factory:
+            """Yields error session first, then good session."""
+
+            def __call__(self) -> AsyncMock:
+                nonlocal call_count
+                call_count += 1
+                ctx = AsyncMock()
+                if call_count == 1:
+                    ctx.__aenter__ = AsyncMock(return_value=session_err)
+                else:
+                    ctx.__aenter__ = AsyncMock(return_value=session_ok)
+                ctx.__aexit__ = AsyncMock(return_value=False)
+                return ctx
+
+        with (
+            patch("bot.__main__.async_session_factory", new_callable=_Factory),
+            patch("bot.__main__.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            await _load_settings_from_db()
+
+        mock_sleep.assert_called_once_with(30)
+        assert settings.BOT_TOKEN == "after-error"
+
+    @pytest.mark.asyncio
     async def test_raises_without_fernet_key(self) -> None:
         original = settings.FERNET_KEY
         try:

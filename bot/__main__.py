@@ -40,10 +40,20 @@ async def _load_settings_from_db() -> None:
     fernet = Fernet(settings.FERNET_KEY.encode())
 
     while True:
-        async with async_session_factory() as session:
-            row = await session.scalar(
-                select(BotSettingsRecord).where(BotSettingsRecord.id == 1)
+        row = None
+        try:
+            async with async_session_factory() as session:
+                row = await session.scalar(
+                    select(BotSettingsRecord).where(BotSettingsRecord.id == 1)
+                )
+        except Exception:
+            logger.warning(
+                "Cannot query bot_settings (table may not exist yet). "
+                "Retrying in %ds...",
+                SETTINGS_RETRY_INTERVAL,
             )
+            await asyncio.sleep(SETTINGS_RETRY_INTERVAL)
+            continue
 
         if row and row.client_bot_token:
             break

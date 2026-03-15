@@ -48,8 +48,5 @@ jobs:
       - name: Pull latest image
         run: docker compose pull
 
-      - name: Restart services
-        run: docker compose up -d
-
-      - name: Apply database migrations
-        run: docker compose run --rm bot alembic upgrade head
+      - name: Rebuild and restart services
+        run: docker compose up -d --build

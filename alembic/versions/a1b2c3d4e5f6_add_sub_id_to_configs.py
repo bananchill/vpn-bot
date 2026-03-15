@@ -8,6 +8,7 @@ Create Date: 2026-03-01 12:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 from alembic import op
 
@@ -18,16 +19,24 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _column_exists(table: str, column: str) -> bool:
+    """Check if a column already exists in a table."""
+    bind = op.get_bind()
+    columns = [c['name'] for c in inspect(bind).get_columns(table)]
+    return column in columns
+
+
 def upgrade() -> None:
     """Add sub_id column to configs table.
 
     Existing rows get an empty string as default. New configs will always
     have a generated 16-char hex sub_id set by the application layer.
     """
-    op.add_column(
-        'configs',
-        sa.Column('sub_id', sa.String(length=16), server_default='', nullable=False),
-    )
+    if not _column_exists('configs', 'sub_id'):
+        op.add_column(
+            'configs',
+            sa.Column('sub_id', sa.String(length=16), server_default='', nullable=False),
+        )
 
 
 def downgrade() -> None:

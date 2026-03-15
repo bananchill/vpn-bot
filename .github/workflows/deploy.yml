@@ -42,17 +42,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy proxy
-        run: |
-          if [ -d ~/proxy ]; then
-            cd ~/proxy && git pull origin main
-          else
-            git clone https://github.com/bananchill/proxy.git ~/proxy
-          fi
-          cd ~/proxy
-          docker compose pull
-          docker compose up -d --force-recreate --remove-orphans
-
       - name: Copy .env from server home
         run: cp ~/.env .env
 

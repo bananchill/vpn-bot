@@ -1,10 +1,11 @@
 """Alembic async migration environment.
 
-Reads DATABASE_URL from bot.config.settings and uses Base.metadata
+Reads DATABASE_URL from the environment and uses Base.metadata
 from bot.db.base for autogenerate support.
 """
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -14,14 +15,15 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # Import all models so that Base.metadata is fully populated
 import bot.db.models  # noqa: F401
 from alembic import context
-from bot.config import settings
 from bot.db.base import Base
 
 # Alembic Config object for access to .ini values
 config = context.config
 
-# Override sqlalchemy.url with the value from application settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Override sqlalchemy.url with DATABASE_URL from environment
+database_url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url", ""))
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
 
 # Set up Python logging from the .ini file
 if config.config_file_name is not None:

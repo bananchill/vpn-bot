@@ -7,3 +7,6 @@ __pycache__/
 .ruff_cache/
 .venv/
 alembic/versions/__pycache__/
+.coverage
+.coverage.*
+htmlcov/
